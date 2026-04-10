@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/laundry-link/"
+title = "LaundryLink"
+version = "1.0.0"
+id = "artifacts/laundry-link"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/laundry-link/" ]
+localPort = 21068
+
+[services.development]
+run = "pnpm --filter @workspace/laundry-link run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/laundry-link", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/laundry-link", "run", "serve" ]
+
+[services.env]
+PORT = "21068"
+BASE_PATH = "/laundry-link/"

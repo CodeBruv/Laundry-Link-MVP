@@ -16,6 +16,51 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## LaundryLink Mobile App
+
+- **Framework**: React Native + Expo SDK 54
+- **Routing**: Expo Router (file-based) with role-based route groups
+- **Auth**: Supabase Auth (email/password) with role in user metadata
+- **Storage**: AsyncStorage for local persistence, expo-secure-store for tokens
+- **State**: React Context + TanStack React Query
+- **Styling**: React Native StyleSheet with design tokens in constants/colors.ts
+- **Dark Mode**: Supported via useColorScheme + colors.ts dark palette
+
+### App Structure
+```
+artifacts/laundry-link/
+  app/
+    _layout.tsx          # Root layout with providers (Auth, Query, SafeArea, etc.)
+    index.tsx            # Redirect based on auth state
+    (auth)/              # Login/Signup screens
+    (customer)/          # Customer role: Home, Orders, Profile tabs
+    (business)/          # Business role: Dashboard, Orders, Services, Subscription, Profile tabs
+    (dispatcher)/        # Dispatcher role: Dashboard, Deliveries, Profile tabs
+    (admin)/             # Admin role: Dashboard, Users, Businesses, Settings tabs
+  components/            # Shared components (RoleSelector, SubscriptionPaywall, etc.)
+  contexts/              # AuthContext with Supabase + demo mode
+  lib/                   # Supabase client setup
+  constants/             # Design tokens (colors, radius)
+  types/                 # TypeScript type definitions
+```
+
+### Design System
+- Primary: #092d52 (deep navy)
+- Accent: #1e40af (dark slate blue)
+- Background: #f5f9ff / #ffffff
+- Text: #1c1c1c
+- Font: Inter (400/500/600/700)
+
+### User Roles
+- CUSTOMER: Place laundry orders
+- BUSINESS: Manage laundromat, services, subscription
+- DISPATCHER: Handle pickup/delivery
+- ADMIN: Platform management
+
+### Environment Variables
+- EXPO_PUBLIC_SUPABASE_URL
+- EXPO_PUBLIC_SUPABASE_ANON_KEY
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
