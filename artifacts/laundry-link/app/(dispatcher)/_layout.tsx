@@ -20,8 +20,8 @@ export default function DispatcherLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: true,
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.foreground,
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: colors.primaryForeground,
         headerTitleStyle: { fontFamily: "Inter_600SemiBold" },
         tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 11 },
         tabBarStyle: {

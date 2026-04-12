@@ -21,6 +21,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Framework**: React Native + Expo SDK 54
 - **Routing**: Expo Router (file-based) with role-based route groups
 - **Auth**: Supabase Auth (email/password) with role in user metadata
+- **Role persistence**: Signup stores role in Supabase metadata and explicitly updates user metadata after signup
+- **Demo mode**: If Supabase keys are missing or placeholder values, app falls back to local demo auth and shows a top banner
 - **Storage**: AsyncStorage for local persistence, expo-secure-store for tokens
 - **State**: React Context + TanStack React Query
 - **Styling**: React Native StyleSheet with design tokens in constants/colors.ts

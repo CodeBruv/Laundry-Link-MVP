@@ -62,12 +62,14 @@ export function SubscriptionPaywall({ onClose }: SubscriptionPaywallProps) {
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState<SubscriptionTier>("PRO");
   const [isLoading, setIsLoading] = useState(false);
+  const [activePlan, setActivePlan] = useState<SubscriptionTier | null>(null);
 
   const handleSubscribe = async () => {
     setIsLoading(true);
     setTimeout(() => {
+      setActivePlan(selected);
       setIsLoading(false);
-    }, 2000);
+    }, 900);
   };
 
   return (
@@ -81,12 +83,39 @@ export function SubscriptionPaywall({ onClose }: SubscriptionPaywallProps) {
     >
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.foreground }]}>
-          Choose Your Plan
+          Business Subscription
         </Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Start with a 7-day free trial. Cancel anytime.
+          Pick a SaaS plan for your laundromat. No commissions, no wallets, no payouts.
         </Text>
       </View>
+
+      {activePlan && (
+        <View
+          style={[
+            styles.successBox,
+            {
+              backgroundColor: (colors.success ?? colors.accent) + "16",
+              borderColor: colors.success ?? colors.accent,
+              borderRadius: colors.radius,
+            },
+          ]}
+        >
+          <Feather
+            name="check-circle"
+            size={18}
+            color={colors.success ?? colors.accent}
+          />
+          <Text
+            style={[
+              styles.successText,
+              { color: colors.success ?? colors.accent },
+            ]}
+          >
+            Trial started for {PLANS.find((plan) => plan.id === activePlan)?.name}. RevenueCat purchase flow will connect here.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.plans}>
         {PLANS.map((plan) => {
@@ -99,7 +128,7 @@ export function SubscriptionPaywall({ onClose }: SubscriptionPaywallProps) {
                 styles.planCard,
                 {
                   backgroundColor: colors.card,
-                  borderColor: isSelected ? colors.accent : colors.border,
+                  borderColor: isSelected ? colors.primary : colors.border,
                   borderRadius: colors.radius,
                   borderWidth: isSelected ? 2 : 1,
                 },
@@ -154,7 +183,7 @@ export function SubscriptionPaywall({ onClose }: SubscriptionPaywallProps) {
 
               {isSelected && (
                 <View style={styles.selectedIndicator}>
-                  <Feather name="check-circle" size={20} color={colors.accent} />
+                  <Feather name="check-circle" size={20} color={colors.primary} />
                 </View>
               )}
             </Pressable>
@@ -168,16 +197,16 @@ export function SubscriptionPaywall({ onClose }: SubscriptionPaywallProps) {
         style={[
           styles.subscribeBtn,
           {
-            backgroundColor: colors.accent,
+            backgroundColor: colors.primary,
             borderRadius: colors.radius,
             opacity: isLoading ? 0.7 : 1,
           },
         ]}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.accentForeground} />
+          <ActivityIndicator color={colors.primaryForeground} />
         ) : (
-          <Text style={[styles.subscribeBtnText, { color: colors.accentForeground }]}>
+          <Text style={[styles.subscribeBtnText, { color: colors.primaryForeground }]}>
             Start 7-Day Free Trial
           </Text>
         )}
@@ -223,6 +252,20 @@ const styles = StyleSheet.create({
   plans: {
     gap: 14,
     marginBottom: 24,
+  },
+  successBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 16,
+  },
+  successText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 17,
   },
   planCard: {
     padding: 18,

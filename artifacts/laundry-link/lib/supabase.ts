@@ -40,7 +40,15 @@ const ExpoSecureStoreAdapter = {
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
-const isConfigured = !!supabaseUrl && !!supabaseAnonKey;
+const isPlaceholder =
+  !supabaseUrl ||
+  !supabaseAnonKey ||
+  supabaseUrl.includes("your_supabase") ||
+  supabaseAnonKey.includes("your_supabase") ||
+  supabaseUrl.includes("placeholder") ||
+  supabaseAnonKey.includes("placeholder");
+
+const isConfigured = !isPlaceholder;
 
 function createSupabaseClient(): SupabaseClient {
   if (!isConfigured) {

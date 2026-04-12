@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: null };
       }
 
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -174,8 +174,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
       if (!error) {
+        const { error: updateError, data: updatedData } =
+          await supabase.auth.updateUser({
+            data: {
+              full_name: fullName,
+              role: selectedRole,
+            },
+          });
+
+        if (updatedData.user) {
+          setUser(updatedData.user);
+        } else if (data.user) {
+          setUser(data.user);
+        }
+
         setRole(selectedRole);
         await AsyncStorage.setItem("user_role", selectedRole);
+
+        if (
+          updateError &&
+          !updateError.message.toLowerCase().includes("session")
+        ) {
+          return { error: updateError.message };
+        }
       }
       return { error: error?.message ?? null };
     },
