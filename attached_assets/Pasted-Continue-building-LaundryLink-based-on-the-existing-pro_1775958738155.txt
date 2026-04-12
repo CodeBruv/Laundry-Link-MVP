@@ -1,0 +1,46 @@
+Continue building LaundryLink based on the existing project and the full specification.
+
+Day 2 Goal: Implement the complete Customer Order Creation flow and make orders visible + updatable across roles with basic realtime.
+
+Follow the spec exactly (no wallets, no commissions — pure subscription SaaS).
+
+Specific features to add today:
+
+1. **Database Setup (Supabase SQL)**: 
+   - Create tables if missing: orders, order_items, order_status_history (use the simplified Prisma models from the spec: Order with customerName, pickupAddress, deliveryAddress, items as Json[], totalAmount, status, businessId, assignedDriverId, etc.).
+   - Enable RLS: Customers see only their orders, Businesses see orders for their businessId, etc.
+
+2. **Customer Flow - Create Order (Multi-step Wizard)**:
+   - New "Create Order" screen/tab or floating action button.
+   - Step 1: Pickup address (text input + "Use Current Location" placeholder with expo-location).
+   - Step 2: Delivery address (optional, checkbox "Same as pickup").
+   - Step 3: Select Services — show simple list of services (hardcode or fetch from a services table: e.g. Shirt Wash ₦500, Trouser Press ₦800, etc.). Allow adding multiple items with quantity.
+   - Step 4: Summary — total calculation, special requests textarea, urgent toggle (with note), "Place Order" button.
+   - On submit: Insert into Supabase 'orders' table with status = PENDING. Associate with current user (customerId).
+
+3. **Orders List & Detail**:
+   - Customer Orders tab: List of their orders with status badges (color-coded), order number, items summary, total.
+   - Business Orders tab: List of all orders for that business, with Accept/Reject buttons and status update buttons (progress the status).
+   - Simple status timeline on order detail.
+
+4. **Realtime Updates**:
+   - Use Supabase Realtime subscription on the orders table.
+   - When status changes or new order is created, refresh lists automatically across roles (use TanStack Query or direct listeners).
+
+5. **Basic Assignment**:
+   - In Business order detail: Button to assign a dispatcher (simple dropdown of available dispatchers for MVP).
+
+6. **UI/UX**:
+   - Keep exact color scheme.
+   - Use clean cards, status badges (green for Delivered, blue for In Progress, etc.).
+   - Add pull-to-refresh on orders lists.
+   - Show "No orders yet" empty states.
+
+After implementing, test the full flow:
+- Signup as Customer → create an order.
+- Logout → signup/login as Business → see the new order and update its status.
+- Logout → login as Dispatcher → see assigned delivery.
+
+Provide screenshots/descriptions of the working flow and any remaining issues. Suggest Day 3 focus (e.g., live map tracking or push notifications).
+
+Start building now.
