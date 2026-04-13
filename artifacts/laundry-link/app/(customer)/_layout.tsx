@@ -74,6 +74,18 @@ export default function CustomerLayout() {
         }}
       />
       <Tabs.Screen
+        name="create-order"
+        options={{
+          title: "Create",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="plus.circle" tintColor={color} size={22} />
+            ) : (
+              <Feather name="plus-circle" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",

@@ -17,6 +17,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { OrdersProvider } from "@/contexts/OrdersContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -58,10 +59,12 @@ export default function RootLayout() {
           <GestureHandlerRootView style={styles.appShell}>
             <KeyboardProvider>
               <AuthProvider>
-                <View style={styles.appShell}>
-                  <DemoModeBanner />
-                  <RootLayoutNav />
-                </View>
+                <OrdersProvider>
+                  <View style={styles.appShell}>
+                    <DemoModeBanner />
+                    <RootLayoutNav />
+                  </View>
+                </OrdersProvider>
               </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

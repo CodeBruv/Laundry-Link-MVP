@@ -22,15 +22,21 @@ export type OrderStatus =
 
 export interface Order {
   id: string;
+  orderNumber: string;
   customerId: string;
+  customerName: string;
+  customerEmail?: string;
   businessId: string;
+  businessName: string;
   dispatcherId?: string;
+  assignedDriverName?: string;
   status: OrderStatus;
   items: OrderItem[];
   totalAmount: number;
   pickupAddress: string;
   deliveryAddress: string;
-  notes?: string;
+  specialRequests?: string;
+  urgent?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -74,4 +80,22 @@ export interface SubscriptionPlan {
   price: number;
   features: string[];
   recommended?: boolean;
+}
+
+export interface OrderStatusHistory {
+  id: string;
+  orderId: string;
+  status: OrderStatus;
+  changedBy?: string;
+  note?: string;
+  createdAt: string;
+}
+
+export interface CreateOrderInput {
+  pickupAddress: string;
+  deliveryAddress: string;
+  items: OrderItem[];
+  totalAmount: number;
+  specialRequests?: string;
+  urgent?: boolean;
 }

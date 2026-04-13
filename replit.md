@@ -25,6 +25,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Demo mode**: If Supabase keys are missing or placeholder values, app falls back to local demo auth and shows a top banner
 - **Storage**: AsyncStorage for local persistence, expo-secure-store for tokens
 - **State**: React Context + TanStack React Query
+- **Orders**: OrdersProvider manages Supabase-backed order creation, realtime refresh, local fallback, status history, and dispatcher assignment
+- **Supabase schema**: Day 2 order SQL lives at `artifacts/laundry-link/supabase/orders.sql`
+- **Marketplace model**: Pure subscription SaaS; no wallets, commissions, or payout flows
 - **Styling**: React Native StyleSheet with design tokens in constants/colors.ts
 - **Dark Mode**: Supported via useColorScheme + colors.ts dark palette
 
@@ -35,12 +38,12 @@ artifacts/laundry-link/
     _layout.tsx          # Root layout with providers (Auth, Query, SafeArea, etc.)
     index.tsx            # Redirect based on auth state
     (auth)/              # Login/Signup screens
-    (customer)/          # Customer role: Home, Orders, Profile tabs
+    (customer)/          # Customer role: Home, Orders, Create Order, Profile tabs
     (business)/          # Business role: Dashboard, Orders, Services, Subscription, Profile tabs
     (dispatcher)/        # Dispatcher role: Dashboard, Deliveries, Profile tabs
     (admin)/             # Admin role: Dashboard, Users, Businesses, Settings tabs
   components/            # Shared components (RoleSelector, SubscriptionPaywall, etc.)
-  contexts/              # AuthContext with Supabase + demo mode
+  contexts/              # AuthContext + OrdersContext with Supabase + demo mode
   lib/                   # Supabase client setup
   constants/             # Design tokens (colors, radius)
   types/                 # TypeScript type definitions
