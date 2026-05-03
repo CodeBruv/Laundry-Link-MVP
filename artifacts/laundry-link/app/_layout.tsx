@@ -11,7 +11,6 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { StyleSheet, useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { DemoModeBanner } from "@/components/DemoModeBanner";
@@ -86,18 +85,16 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={styles.shell}>
-            <KeyboardProvider>
-              <AuthProvider>
-                <SubscriptionProvider>
-                  <OrdersProvider>
-                    <AppServices />
-                    <DemoModeBanner />
-                    <OfflineBanner />
-                    <RootLayoutNav />
-                  </OrdersProvider>
-                </SubscriptionProvider>
-              </AuthProvider>
-            </KeyboardProvider>
+            <AuthProvider>
+              <SubscriptionProvider>
+                <OrdersProvider>
+                  <AppServices />
+                  <DemoModeBanner />
+                  <OfflineBanner />
+                  <RootLayoutNav />
+                </OrdersProvider>
+              </SubscriptionProvider>
+            </AuthProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>
