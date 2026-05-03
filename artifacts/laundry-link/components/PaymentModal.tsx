@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -20,11 +20,15 @@ interface PaymentModalProps {
   visible: boolean;
   amount: number;
   orderNumber: string;
+  customerEmail?: string;
   onSuccess: (reference: string) => void;
   onClose: () => void;
 }
 
 type Stage = "form" | "processing" | "success" | "error";
+
+const PAYSTACK_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY ?? "";
+const HAS_PAYSTACK = PAYSTACK_KEY.startsWith("pk_");
 
 function formatCard(raw: string) {
   return raw.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
@@ -34,8 +38,18 @@ function formatExpiry(raw: string) {
   if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
   return digits;
 }
+function makeRef() {
+  return `LL-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+}
 
-export function PaymentModal({ visible, amount, orderNumber, onSuccess, onClose }: PaymentModalProps) {
+export function PaymentModal({
+  visible,
+  amount,
+  orderNumber,
+  customerEmail,
+  onSuccess,
+  onClose,
+}: PaymentModalProps) {
   const colors = useColors();
   const [stage, setStage] = useState<Stage>("form");
   const [card, setCard] = useState("");
@@ -52,30 +66,66 @@ export function PaymentModal({ visible, amount, orderNumber, onSuccess, onClose 
 
   const reset = () => {
     setStage("form");
-    setCard("");
-    setExpiry("");
-    setCvv("");
-    setName("");
-    setError("");
+    setCard(""); setExpiry(""); setCvv(""); setName(""); setError("");
   };
 
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
+  const handleClose = () => { reset(); onClose(); };
+
+  // ── Paystack Standard Checkout (web browser redirect) ──────────────────────
+  async function openPaystackCheckout(): Promise<string | null> {
+    const ref = makeRef();
+    const callbackUrl = encodeURIComponent(`laundrylink://payment?reference=${ref}&status=success`);
+    const url =
+      `https://checkout.paystack.com/new/checkout?key=${PAYSTACK_KEY}` +
+      `&email=${encodeURIComponent(customerEmail ?? "customer@laundrylink.app")}` +
+      `&amount=${amount * 100}` +
+      `&currency=NGN` +
+      `&ref=${ref}` +
+      `&callback_url=${callbackUrl}`;
+
+    const result = await WebBrowser.openAuthSessionAsync(url, "laundrylink://payment");
+    if (result.type === "success") {
+      const urlObj = new URL(result.url);
+      const status = urlObj.searchParams.get("status") ?? urlObj.searchParams.get("trxref");
+      if (status === "success" || status) {
+        return urlObj.searchParams.get("reference") ?? ref;
+      }
+    }
+    return null;
+  }
 
   const handlePay = async () => {
     setError("");
+    if ((Platform.OS as string) !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (HAS_PAYSTACK && (Platform.OS as string) !== "web") {
+      // Real Paystack flow via web browser
+      setStage("processing");
+      try {
+        const ref = await openPaystackCheckout();
+        if (ref) {
+          setStage("success");
+          if ((Platform.OS as string) !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          await new Promise((r) => setTimeout(r, 1200));
+          reset();
+          onSuccess(ref);
+        } else {
+          setStage("error");
+        }
+      } catch {
+        setStage("error");
+      }
+      return;
+    }
+
+    // ── Simulation / demo mode ─────────────────────────────────────────────
     if (!isFormValid) { setError("Please fill in all card details correctly."); return; }
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setStage("processing");
-    // Simulate Paystack processing (1.8s)
     await new Promise((r) => setTimeout(r, 1800));
-    const ref = `PS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    const ref = makeRef();
     setStage("success");
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    // Give the user 1.5s to see success, then callback
-    await new Promise((r) => setTimeout(r, 1500));
+    if ((Platform.OS as string) !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await new Promise((r) => setTimeout(r, 1400));
     reset();
     onSuccess(ref);
   };
@@ -89,7 +139,7 @@ export function PaymentModal({ visible, amount, orderNumber, onSuccess, onClose 
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
-            <View style={[styles.paystackLogo, { backgroundColor: colors.primary }]}>
+            <View style={[styles.paystackBadge, { backgroundColor: colors.primary }]}>
               <Feather name="shield" size={16} color={colors.primaryForeground} />
             </View>
             <View>
@@ -97,63 +147,62 @@ export function PaymentModal({ visible, amount, orderNumber, onSuccess, onClose 
               <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Order #{orderNumber}</Text>
             </View>
           </View>
-          <Pressable onPress={handleClose} style={styles.closeBtn}>
+          <Pressable onPress={handleClose} style={styles.closeBtn} hitSlop={8}>
             <Feather name="x" size={22} color={colors.mutedForeground} />
           </Pressable>
         </View>
 
+        {/* Test-mode badge */}
+        {!HAS_PAYSTACK && stage === "form" && (
+          <View style={[styles.testBadge, { backgroundColor: "#f59e0b18", borderColor: "#f59e0b30" }]}>
+            <Feather name="info" size={12} color="#f59e0b" />
+            <Text style={styles.testText}>
+              Demo mode — card form is simulated. Set EXPO_PUBLIC_PAYSTACK_KEY to enable live payments.
+            </Text>
+          </View>
+        )}
+
+        {/* Paystack redirect mode hint */}
+        {HAS_PAYSTACK && Platform.OS !== "web" && stage === "form" && (
+          <View style={[styles.testBadge, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "20" }]}>
+            <Feather name="external-link" size={12} color={colors.primary} />
+            <Text style={[styles.testText, { color: colors.primary }]}>
+              Tap Pay to open Paystack secure checkout
+            </Text>
+          </View>
+        )}
+
+        {/* ── Form stage ────────────────────────────────────────────────────── */}
         {stage === "form" && (
           <View style={styles.body}>
-            {/* Amount */}
             <View style={[styles.amountBox, { backgroundColor: colors.primary + "10", borderRadius: colors.radius }]}>
               <Text style={[styles.amountLabel, { color: colors.mutedForeground }]}>Amount due</Text>
               <Text style={[styles.amountValue, { color: colors.primary }]}>₦{amount.toLocaleString()}</Text>
             </View>
 
-            {/* Card name */}
-            <LabeledInput
-              label="Cardholder name"
-              value={name}
-              onChangeText={setName}
-              placeholder="Full name on card"
-              autoCapitalize="words"
-              colors={colors}
-            />
-
-            {/* Card number */}
-            <LabeledInput
-              label="Card number"
-              value={card}
-              onChangeText={(t) => setCard(formatCard(t))}
-              placeholder="0000 0000 0000 0000"
-              keyboardType="numeric"
-              colors={colors}
-              icon="credit-card"
-            />
-
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <LabeledInput
-                  label="Expiry"
-                  value={expiry}
-                  onChangeText={(t) => setExpiry(formatExpiry(t))}
-                  placeholder="MM/YY"
-                  keyboardType="numeric"
-                  colors={colors}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <LabeledInput
-                  label="CVV"
-                  value={cvv}
-                  onChangeText={(t) => setCvv(t.replace(/\D/g, "").slice(0, 3))}
-                  placeholder="000"
-                  keyboardType="numeric"
-                  secureTextEntry
-                  colors={colors}
-                />
-              </View>
-            </View>
+            {/* Show card form only in simulation mode */}
+            {!HAS_PAYSTACK && (
+              <>
+                <LabeledInput label="Cardholder name" value={name} onChangeText={setName}
+                  placeholder="Full name on card" autoCapitalize="words" colors={colors} />
+                <LabeledInput label="Card number" value={card}
+                  onChangeText={(t) => setCard(formatCard(t))}
+                  placeholder="0000 0000 0000 0000" keyboardType="numeric"
+                  colors={colors} icon="credit-card" />
+                <View style={styles.row}>
+                  <View style={{ flex: 1 }}>
+                    <LabeledInput label="Expiry" value={expiry}
+                      onChangeText={(t) => setExpiry(formatExpiry(t))}
+                      placeholder="MM/YY" keyboardType="numeric" colors={colors} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <LabeledInput label="CVV" value={cvv}
+                      onChangeText={(t) => setCvv(t.replace(/\D/g, "").slice(0, 3))}
+                      placeholder="000" keyboardType="numeric" secureTextEntry colors={colors} />
+                  </View>
+                </View>
+              </>
+            )}
 
             {!!error && (
               <View style={[styles.errorRow, { backgroundColor: "#ef444412", borderRadius: colors.radius }]}>
@@ -164,12 +213,19 @@ export function PaymentModal({ visible, amount, orderNumber, onSuccess, onClose 
 
             <Pressable
               onPress={handlePay}
-              disabled={!isFormValid}
-              style={[styles.payBtn, { backgroundColor: colors.primary, borderRadius: colors.radius, opacity: isFormValid ? 1 : 0.5 }]}
+              disabled={!HAS_PAYSTACK && !isFormValid}
+              style={[
+                styles.payBtn,
+                {
+                  backgroundColor: colors.primary,
+                  borderRadius: colors.radius,
+                  opacity: (!HAS_PAYSTACK && !isFormValid) ? 0.5 : 1,
+                },
+              ]}
             >
-              <Feather name="lock" size={16} color={colors.primaryForeground} />
+              <Feather name={HAS_PAYSTACK ? "external-link" : "lock"} size={16} color={colors.primaryForeground} />
               <Text style={[styles.payBtnText, { color: colors.primaryForeground }]}>
-                Pay ₦{amount.toLocaleString()} securely
+                Pay ₦{amount.toLocaleString()} {HAS_PAYSTACK ? "via Paystack" : "securely"}
               </Text>
             </Pressable>
 
@@ -182,34 +238,44 @@ export function PaymentModal({ visible, amount, orderNumber, onSuccess, onClose 
           </View>
         )}
 
+        {/* ── Processing ───────────────────────────────────────────────────── */}
         {stage === "processing" && (
           <View style={styles.statusCenter}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.statusTitle, { color: colors.foreground }]}>Processing payment…</Text>
-            <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>Please wait, do not close this screen.</Text>
-          </View>
-        )}
-
-        {stage === "success" && (
-          <View style={styles.statusCenter}>
-            <View style={[styles.successIcon, { backgroundColor: "#10b98118" }]}>
-              <Feather name="check-circle" size={48} color="#10b981" />
-            </View>
-            <Text style={[styles.statusTitle, { color: colors.foreground }]}>Payment successful!</Text>
             <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
-              Your order has been marked as paid. The laundromat will be notified.
+              Please do not close this screen.
             </Text>
           </View>
         )}
 
+        {/* ── Success ──────────────────────────────────────────────────────── */}
+        {stage === "success" && (
+          <View style={styles.statusCenter}>
+            <View style={[styles.bigIcon, { backgroundColor: "#10b98118" }]}>
+              <Feather name="check-circle" size={52} color="#10b981" />
+            </View>
+            <Text style={[styles.statusTitle, { color: colors.foreground }]}>Payment successful!</Text>
+            <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
+              Your order has been marked as paid and the laundromat will be notified.
+            </Text>
+          </View>
+        )}
+
+        {/* ── Error ────────────────────────────────────────────────────────── */}
         {stage === "error" && (
           <View style={styles.statusCenter}>
-            <View style={[styles.errorIcon, { backgroundColor: "#ef444418" }]}>
-              <Feather name="x-circle" size={48} color="#ef4444" />
+            <View style={[styles.bigIcon, { backgroundColor: "#ef444418" }]}>
+              <Feather name="x-circle" size={52} color="#ef4444" />
             </View>
-            <Text style={[styles.statusTitle, { color: colors.foreground }]}>Payment failed</Text>
-            <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>Please try again or use a different card.</Text>
-            <Pressable onPress={() => setStage("form")} style={[styles.retryBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}>
+            <Text style={[styles.statusTitle, { color: colors.foreground }]}>Payment cancelled</Text>
+            <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
+              Payment was not completed. Please try again.
+            </Text>
+            <Pressable
+              onPress={() => setStage("form")}
+              style={[styles.retryBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
+            >
               <Text style={[styles.retryText, { color: colors.primaryForeground }]}>Try again</Text>
             </Pressable>
           </View>
@@ -220,15 +286,8 @@ export function PaymentModal({ visible, amount, orderNumber, onSuccess, onClose 
 }
 
 function LabeledInput({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType,
-  secureTextEntry,
-  autoCapitalize,
-  icon,
-  colors,
+  label, value, onChangeText, placeholder, keyboardType, secureTextEntry,
+  autoCapitalize, icon, colors,
 }: {
   label: string;
   value: string;
@@ -264,10 +323,12 @@ const styles = StyleSheet.create({
   sheet: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, borderBottomWidth: 1 },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  paystackLogo: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  paystackBadge: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   headerTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   closeBtn: { padding: 6 },
+  testBadge: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginHorizontal: 20, marginTop: 14, padding: 12, borderRadius: 10, borderWidth: 1 },
+  testText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: "#92400e", lineHeight: 16 },
   body: { padding: 20, gap: 16 },
   amountBox: { paddingHorizontal: 16, paddingVertical: 14, gap: 4 },
   amountLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
@@ -279,15 +340,14 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 12 },
   errorRow: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12 },
   errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#ef4444" },
-  payBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16, marginTop: 4 },
+  payBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 17, marginTop: 4 },
   payBtnText: { fontSize: 16, fontFamily: "Inter_700Bold" },
   securityRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   securityText: { fontSize: 11, fontFamily: "Inter_400Regular" },
   statusCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 },
-  successIcon: { width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center" },
-  errorIcon: { width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center" },
+  bigIcon: { width: 100, height: 100, borderRadius: 50, alignItems: "center", justifyContent: "center" },
   statusTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
-  statusSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  statusSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 21 },
   retryBtn: { paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
   retryText: { fontSize: 15, fontFamily: "Inter_700Bold" },
 });

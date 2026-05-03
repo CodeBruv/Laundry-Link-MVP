@@ -16,22 +16,18 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { OrdersProvider } from "@/contexts/OrdersContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
-import { registerForPushNotificationsAsync } from "@/lib/notifications";
+import { useNotifications } from "@/hooks/useNotifications";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-function PushTokenRegistrar() {
-  const { user } = useAuth();
-  useEffect(() => {
-    if (user?.id) {
-      registerForPushNotificationsAsync(user.id).catch(() => {});
-    }
-  }, [user?.id]);
+function AppServices() {
+  useNotifications();
   return null;
 }
 
@@ -74,9 +70,10 @@ export default function RootLayout() {
               <AuthProvider>
                 <SubscriptionProvider>
                   <OrdersProvider>
-                    <PushTokenRegistrar />
+                    <AppServices />
                     <View style={styles.shell}>
                       <DemoModeBanner />
+                      <OfflineBanner />
                       <RootLayoutNav />
                     </View>
                   </OrdersProvider>

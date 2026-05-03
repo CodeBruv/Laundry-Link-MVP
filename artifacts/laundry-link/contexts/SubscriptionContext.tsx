@@ -8,6 +8,8 @@ import React, {
 } from "react";
 
 import {
+  SubscriptionFeature,
+  canAccessFeature,
   cancelSubscription,
   getSubscription,
   startTrial,
@@ -29,6 +31,7 @@ interface SubscriptionContextType {
   subscription: SubscriptionState;
   isLoading: boolean;
   isSubscribed: boolean;
+  canAccess: (feature: SubscriptionFeature) => boolean;
   refresh: () => Promise<void>;
   beginTrial: (tier: SubscriptionTier) => Promise<void>;
   purchasePlan: (tier: SubscriptionTier) => Promise<void>;
@@ -39,6 +42,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   subscription: DEFAULT,
   isLoading: true,
   isSubscribed: false,
+  canAccess: () => false,
   refresh: async () => {},
   beginTrial: async () => {},
   purchasePlan: async () => {},
@@ -68,21 +72,15 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     refresh();
   }, [refresh, role]);
 
-  const beginTrial = useCallback(
-    async (tier: SubscriptionTier) => {
-      const state = await startTrial(tier);
-      setSubscription(state);
-    },
-    [],
-  );
+  const beginTrial = useCallback(async (tier: SubscriptionTier) => {
+    const state = await startTrial(tier);
+    setSubscription(state);
+  }, []);
 
-  const purchasePlan = useCallback(
-    async (tier: SubscriptionTier) => {
-      const state = await subscribe(tier);
-      setSubscription(state);
-    },
-    [],
-  );
+  const purchasePlan = useCallback(async (tier: SubscriptionTier) => {
+    const state = await subscribe(tier);
+    setSubscription(state);
+  }, []);
 
   const cancel = useCallback(async () => {
     const state = await cancelSubscription();
@@ -91,9 +89,24 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const isSubscribed = subscription.active && !!subscription.tier;
 
+  const canAccess = useCallback(
+    (feature: SubscriptionFeature) =>
+      canAccessFeature(feature, subscription.tier, subscription.active),
+    [subscription.tier, subscription.active],
+  );
+
   const value = useMemo(
-    () => ({ subscription, isLoading, isSubscribed, refresh, beginTrial, purchasePlan, cancel }),
-    [subscription, isLoading, isSubscribed, refresh, beginTrial, purchasePlan, cancel],
+    () => ({
+      subscription,
+      isLoading,
+      isSubscribed,
+      canAccess,
+      refresh,
+      beginTrial,
+      purchasePlan,
+      cancel,
+    }),
+    [subscription, isLoading, isSubscribed, canAccess, refresh, beginTrial, purchasePlan, cancel],
   );
 
   return (

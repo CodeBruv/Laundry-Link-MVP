@@ -19,6 +19,7 @@ export const SUBSCRIPTION_PLANS = [
     ],
     maxOrders: 50,
     maxDispatchers: 1,
+    recommended: false,
   },
   {
     id: "PRO" as SubscriptionTier,
@@ -51,8 +52,53 @@ export const SUBSCRIPTION_PLANS = [
     ],
     maxOrders: Infinity,
     maxDispatchers: Infinity,
+    recommended: false,
   },
 ];
+
+export type SubscriptionFeature =
+  | "orders"
+  | "dispatchers"
+  | "reports"
+  | "liveTracking"
+  | "customPricing"
+  | "multiBranch"
+  | "apiAccess"
+  | "whiteLabel"
+  | "prioritySupport";
+
+const FEATURE_TIERS: Record<SubscriptionFeature, SubscriptionTier[]> = {
+  orders: ["STARTER", "PRO", "ENTERPRISE"],
+  dispatchers: ["STARTER", "PRO", "ENTERPRISE"],
+  reports: ["PRO", "ENTERPRISE"],
+  liveTracking: ["PRO", "ENTERPRISE"],
+  customPricing: ["PRO", "ENTERPRISE"],
+  multiBranch: ["ENTERPRISE"],
+  apiAccess: ["ENTERPRISE"],
+  whiteLabel: ["ENTERPRISE"],
+  prioritySupport: ["PRO", "ENTERPRISE"],
+};
+
+export function canAccessFeature(
+  feature: SubscriptionFeature,
+  tier: SubscriptionTier | null,
+  active: boolean,
+): boolean {
+  if (!active || !tier) return false;
+  return FEATURE_TIERS[feature]?.includes(tier) ?? false;
+}
+
+export function getPlanLimits(tier: SubscriptionTier | null) {
+  const plan = SUBSCRIPTION_PLANS.find((p) => p.id === tier);
+  return {
+    maxOrders: plan?.maxOrders ?? 0,
+    maxDispatchers: plan?.maxDispatchers ?? 0,
+  };
+}
+
+export function getPlanName(tier: SubscriptionTier | null): string {
+  return SUBSCRIPTION_PLANS.find((p) => p.id === tier)?.name ?? "Free";
+}
 
 const DEFAULT_STATE: SubscriptionState = {
   tier: null,
@@ -68,15 +114,15 @@ export async function getSubscription(): Promise<SubscriptionState> {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_STATE;
     const state = JSON.parse(raw) as SubscriptionState;
-    // Check trial expiry
     if (state.isTrial && state.trialExpiresAt) {
-      const expired = new Date(state.trialExpiresAt) < new Date();
-      if (expired) return { ...state, active: false };
+      if (new Date(state.trialExpiresAt) < new Date()) {
+        return { ...state, active: false };
+      }
     }
-    // Check subscription expiry
     if (!state.isTrial && state.expiresAt) {
-      const expired = new Date(state.expiresAt) < new Date();
-      if (expired) return { ...state, active: false };
+      if (new Date(state.expiresAt) < new Date()) {
+        return { ...state, active: false };
+      }
     }
     return state;
   } catch {

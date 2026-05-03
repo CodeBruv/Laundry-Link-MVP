@@ -376,6 +376,7 @@ export default function OrderDetailScreen() {
         visible={showPayment}
         amount={order.totalAmount}
         orderNumber={order.orderNumber}
+        customerEmail={order.customerEmail}
         onSuccess={handlePaymentSuccess}
         onClose={() => setShowPayment(false)}
       />

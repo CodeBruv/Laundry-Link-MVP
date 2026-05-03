@@ -79,10 +79,10 @@ export function OrderMap({ order }: { order: Order }) {
     <View style={[styles.map, { backgroundColor: colors.muted, borderRadius: colors.radius }]}>
       {/* Grid lines — simulated street grid */}
       {[20, 40, 60, 80].map((pct) => (
-        <View key={`h${pct}`} style={[styles.gridH, { top: `${pct}%`, backgroundColor: colors.border }]} />
+        <View key={`h${pct}`} style={[styles.gridH, { top: `${pct}%` as any, backgroundColor: colors.border }]} />
       ))}
       {[25, 50, 75].map((pct) => (
-        <View key={`v${pct}`} style={[styles.gridV, { left: `${pct}%`, backgroundColor: colors.border }]} />
+        <View key={`v${pct}`} style={[styles.gridV, { left: `${pct}%` as any, backgroundColor: colors.border }]} />
       ))}
 
       {/* Route line: business → delivery */}
@@ -91,8 +91,8 @@ export function OrderMap({ order }: { order: Order }) {
           styles.routeLine,
           {
             backgroundColor: colors.primary + "50",
-            top: bizPos.top,
-            left: bizPos.left,
+            top: bizPos.top as any,
+            left: bizPos.left as any,
           },
         ]}
       />
@@ -104,8 +104,8 @@ export function OrderMap({ order }: { order: Order }) {
             styles.routeLine,
             {
               backgroundColor: "#10b98180",
-              top: drvPos.top,
-              left: drvPos.left,
+              top: drvPos.top as any,
+              left: drvPos.left as any,
             },
           ]}
         />

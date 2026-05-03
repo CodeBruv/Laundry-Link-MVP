@@ -21,13 +21,13 @@ export default function IndexRedirect() {
 
   switch (role) {
     case "BUSINESS":
-      return <Redirect href="/(business)/" />;
+      return <Redirect href="/(business)" />;
     case "DISPATCHER":
-      return <Redirect href="/(dispatcher)/" />;
+      return <Redirect href="/(dispatcher)" />;
     case "ADMIN":
-      return <Redirect href="/(admin)/" />;
+      return <Redirect href="/(admin)" />;
     default:
-      return <Redirect href="/(customer)/" />;
+      return <Redirect href="/(customer)" />;
   }
 }
 

@@ -5,11 +5,14 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getQueue, removeFromQueue, incrementAttempts } from "@/lib/offlineQueue";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import {
   notifyNewOrder,
   notifyStatusChange,
@@ -134,6 +137,9 @@ function filterOrdersForRole(allOrders: Order[], role: UserRole | null, userId?:
 
 export function OrdersProvider({ children }: { children: React.ReactNode }) {
   const { user, role, isDemo } = useAuth();
+  const { isOnline } = useNetworkStatus();
+  const isFlushing = useRef(false);
+  const createOrderRef = useRef<((input: CreateOrderInput) => Promise<{ error: string | null; orderId?: string }>) | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [history, setHistory] = useState<OrderStatusHistory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -188,6 +194,34 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, isDemo, refreshOrders]);
+
+  // Offline queue flush — retry queued orders when back online
+  useEffect(() => {
+    if (!isOnline || !user || isFlushing.current || !createOrderRef.current) return;
+
+    const fn = createOrderRef.current;
+    async function flushQueue() {
+      isFlushing.current = true;
+      try {
+        const queue = await getQueue();
+        for (const item of queue) {
+          if (item.attempts >= 3) {
+            await removeFromQueue(item.id);
+            continue;
+          }
+          await incrementAttempts(item.id);
+          const result = await fn(item.input);
+          if (!result.error) {
+            await removeFromQueue(item.id);
+          }
+        }
+      } finally {
+        isFlushing.current = false;
+      }
+    }
+
+    flushQueue();
+  }, [isOnline, user]);
 
   const createOrder = useCallback(
     async (input: CreateOrderInput) => {
@@ -270,6 +304,8 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     },
     [user, isDemo, refreshOrders],
   );
+
+  createOrderRef.current = createOrder;
 
   const updateOrderStatus = useCallback(
     async (orderId: string, status: OrderStatus, note?: string) => {

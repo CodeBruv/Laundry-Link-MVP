@@ -76,10 +76,10 @@ function useProtectedRoute(
       router.replace("/(auth)/login");
     } else if (user && inAuthGroup) {
       switch (role) {
-        case "BUSINESS":   router.replace("/(business)/");   break;
-        case "DISPATCHER": router.replace("/(dispatcher)/"); break;
-        case "ADMIN":      router.replace("/(admin)/");      break;
-        default:           router.replace("/(customer)/");   break;
+        case "BUSINESS":   router.replace("/(business)");   break;
+        case "DISPATCHER": router.replace("/(dispatcher)"); break;
+        case "ADMIN":      router.replace("/(admin)");      break;
+        default:           router.replace("/(customer)");   break;
       }
     }
   }, [user, role, segments, isLoading]);
@@ -251,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           supabase.auth.updateUser({
             data: { full_name: fullName, role: selectedRole },
           }),
-        { data: { user: null }, error: null },
+        { data: { user: null as any }, error: null },
       );
       const finalUser = updateResult.data.user ?? result.data.user;
       if (finalUser) setUser(finalUser);
