@@ -26,12 +26,40 @@ import { useOrders } from "@/contexts/OrdersContext";
 import { useColors } from "@/hooks/useColors";
 import { OrderStatus } from "@/types";
 
-const BUSINESS_FLOW: OrderStatus[] = ["ACCEPTED", "PICKED_UP", "IN_PROGRESS", "READY"];
-const DISPATCHER_FLOW: { status: OrderStatus; label: string; icon: keyof typeof Feather.glyphMap }[] = [
-  { status: "PICKED_UP", label: "Mark Picked Up", icon: "shopping-bag" },
-  { status: "OUT_FOR_DELIVERY", label: "Out for Delivery", icon: "truck" },
-  { status: "DELIVERED", label: "Mark Delivered", icon: "check-circle" },
+/**
+ * Strict status flow (enforced here and in business/orders + deliveries):
+ *
+ * Business controls:
+ *   PENDING → ACCEPTED → PICKED_UP → IN_PROGRESS → READY
+ *   (then blocked until customer pays → PAID)
+ *   PAID → OUT_FOR_DELIVERY (business dispatches rider)
+ *
+ * Customer:
+ *   When READY → pays via Paystack → PAID
+ *
+ * Dispatcher:
+ *   ACCEPTED → PICKED_UP
+ *   PAID → OUT_FOR_DELIVERY
+ *   OUT_FOR_DELIVERY → DELIVERED
+ *   Cannot skip payment gate.
+ */
+
+// Business can advance through these in order, but ONLY up to READY before payment
+const BUSINESS_ADVANCE: Array<{ from: OrderStatus; to: OrderStatus; label: string }> = [
+  { from: "PENDING", to: "ACCEPTED", label: "Accept Order" },
+  { from: "ACCEPTED", to: "PICKED_UP", label: "Mark Picked Up" },
+  { from: "PICKED_UP", to: "IN_PROGRESS", label: "Mark In Progress" },
+  { from: "IN_PROGRESS", to: "READY", label: "Mark Ready" },
+  { from: "PAID", to: "OUT_FOR_DELIVERY", label: "Send Out for Delivery" },
 ];
+
+// Dispatcher gets one action at a time, gated strictly
+function getDispatcherNextAction(status: OrderStatus): { status: OrderStatus; label: string; icon: keyof typeof Feather.glyphMap } | null {
+  if (status === "ACCEPTED" || status === "PENDING") return { status: "PICKED_UP", label: "Mark Picked Up", icon: "shopping-bag" };
+  if (status === "PAID") return { status: "OUT_FOR_DELIVERY", label: "Out for Delivery", icon: "truck" };
+  if (status === "OUT_FOR_DELIVERY") return { status: "DELIVERED", label: "Mark Delivered", icon: "check-circle" };
+  return null;
+}
 
 export default function OrderDetailScreen() {
   const colors = useColors();
@@ -40,13 +68,8 @@ export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { role } = useAuth();
   const {
-    getOrderById,
-    getHistoryForOrder,
-    updateOrderStatus,
-    assignDispatcher,
-    updateDriverLocation,
-    markOrderPaid,
-    isLoading,
+    getOrderById, getHistoryForOrder, updateOrderStatus,
+    assignDispatcher, updateDriverLocation, markOrderPaid, isLoading,
   } = useOrders();
 
   const order = getOrderById(String(id));
@@ -101,11 +124,10 @@ export default function OrderDetailScreen() {
   const isCustomer = role === "CUSTOMER";
   const isBusinessRole = role === "BUSINESS";
   const isDispatcher = role === "DISPATCHER";
-  const canBusinessUpdate = isBusinessRole && order.status !== "DELIVERED" && order.status !== "CANCELLED";
-  const canDispatcherUpdate = isDispatcher && order.status !== "DELIVERED" && order.status !== "CANCELLED";
-  const showMap = isCustomer || isBusinessRole;
+  const isTerminal = order.status === "DELIVERED" || order.status === "CANCELLED";
   const showPayNow = isCustomer && order.status === "READY";
   const isPaid = order.status === "PAID";
+  const isReady = order.status === "READY";
 
   const handleStatus = async (status: OrderStatus, label: string) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -124,6 +146,11 @@ export default function OrderDetailScreen() {
     setShowPayment(false);
     await markOrderPaid(order.id, reference);
   };
+
+  // Find the next business action for current status
+  const businessAction = BUSINESS_ADVANCE.find((a) => a.from === order.status);
+  // Dispatcher next action
+  const dispatcherAction = getDispatcherNextAction(order.status);
 
   return (
     <>
@@ -175,13 +202,11 @@ export default function OrderDetailScreen() {
             </Text>
           </View>
           {order.paystackRef && (
-            <Text style={[styles.refText, { color: colors.mutedForeground }]}>
-              Ref: {order.paystackRef}
-            </Text>
+            <Text style={[styles.refText, { color: colors.mutedForeground }]}>Ref: {order.paystackRef}</Text>
           )}
         </View>
 
-        {/* Pay Now — shown to customer when READY */}
+        {/* Customer: Pay Now when READY */}
         {showPayNow && (
           <Pressable
             onPress={() => setShowPayment(true)}
@@ -189,13 +214,13 @@ export default function OrderDetailScreen() {
           >
             <Feather name="credit-card" size={18} color="#ffffff" />
             <View>
-              <Text style={styles.payNowText}>Pay Now — ₦{order.totalAmount.toLocaleString()}</Text>
-              <Text style={styles.payNowSub}>Your order is ready. Complete payment to start delivery.</Text>
+              <Text style={styles.payNowText}>Pay ₦{order.totalAmount.toLocaleString()} — Order Ready</Text>
+              <Text style={styles.payNowSub}>Your laundry is clean. Pay to start delivery.</Text>
             </View>
           </Pressable>
         )}
 
-        {/* Payment confirmed (customer view) */}
+        {/* Payment confirmed (customer) */}
         {isPaid && isCustomer && (
           <View style={[styles.paidBanner, { backgroundColor: "#05966918", borderRadius: colors.radius }]}>
             <Feather name="check-circle" size={18} color="#059669" />
@@ -205,28 +230,41 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Payment received (business view) */}
+        {/* Payment received (business) */}
         {isPaid && isBusinessRole && (
           <View style={[styles.paidBanner, { backgroundColor: "#05966918", borderRadius: colors.radius }]}>
             <Feather name="dollar-sign" size={18} color="#059669" />
             <Text style={[styles.paidBannerText, { color: "#059669" }]}>
-              Payment received — ₦{order.totalAmount.toLocaleString()}
+              Payment received — ₦{order.totalAmount.toLocaleString()}. Assign dispatcher and send out for delivery.
             </Text>
           </View>
         )}
 
-        {/* Addresses */}
+        {/* Waiting for payment (business + dispatcher) */}
+        {isReady && (isBusinessRole || isDispatcher) && (
+          <View style={[styles.waitBanner, { backgroundColor: "#d9770610", borderColor: "#d9770630", borderRadius: colors.radius }]}>
+            <Feather name="clock" size={16} color="#d97706" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.waitTitle, { color: "#d97706" }]}>Waiting for customer payment</Text>
+              <Text style={[styles.waitBody, { color: "#d97706" }]}>
+                Customer needs to pay ₦{order.totalAmount.toLocaleString()} before the order can proceed to delivery.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Order details */}
         <View style={[styles.card, { backgroundColor: colors.card, borderRadius: colors.radius }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Order details</Text>
           <InfoRow icon="user" label={order.customerName} />
           <InfoRow icon="map-pin" label={`Pickup: ${order.pickupAddress}`} />
-          <InfoRow icon="navigation" label={`Delivery: ${order.deliveryAddress}`} />
+          <InfoRow icon="navigation" label={`Deliver: ${order.deliveryAddress}`} />
           {order.specialRequests ? <InfoRow icon="file-text" label={`Notes: ${order.specialRequests}`} /> : null}
-          {order.assignedDriverName && <InfoRow icon="truck" label={`Driver: ${order.assignedDriverName}`} accent />}
+          {order.assignedDriverName && <InfoRow icon="truck" label={`Rider: ${order.assignedDriverName}`} accent />}
         </View>
 
         {/* Map */}
-        {showMap && (
+        {(isCustomer || isBusinessRole) && (
           <View style={[styles.card, { backgroundColor: colors.card, borderRadius: colors.radius }]}>
             <View style={styles.mapHeader}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Live tracking</Text>
@@ -260,12 +298,12 @@ export default function OrderDetailScreen() {
           </View>
         </View>
 
-        {/* Dispatcher assignment (Business only) */}
-        {isBusinessRole && (
+        {/* Dispatcher assignment — Business only, shown when paid to allow dispatch */}
+        {isBusinessRole && (isPaid || order.status === "READY") && (
           <View style={[styles.card, { backgroundColor: colors.card, borderRadius: colors.radius }]}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Assign dispatcher</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Assign Rider</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Currently: {order.assignedDriverName || "None"}
+              Currently: {order.assignedDriverName || "None assigned"}
             </Text>
             <View style={styles.chipRow}>
               {DISPATCHERS.map((driver) => {
@@ -294,7 +332,7 @@ export default function OrderDetailScreen() {
         {/* Dispatcher controls */}
         {isDispatcher && (
           <View style={[styles.card, { backgroundColor: colors.card, borderRadius: colors.radius }]}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Driver controls</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Rider Controls</Text>
             <View style={[styles.locationToggleRow, { backgroundColor: isSharingLocation ? colors.primary + "12" : colors.muted + "30", borderRadius: colors.radius }]}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.toggleLabel, { color: colors.foreground }]}>Share live location</Text>
@@ -312,22 +350,14 @@ export default function OrderDetailScreen() {
                 thumbColor={isSharingLocation ? colors.primary : colors.card}
               />
             </View>
-            {canDispatcherUpdate && (
-              <View style={styles.dispatcherActions}>
-                {DISPATCHER_FLOW.filter((action) => {
-                  const idx = DISPATCHER_FLOW.findIndex((a) => a.status === order.status);
-                  return DISPATCHER_FLOW.indexOf(action) > idx;
-                }).map((action) => (
-                  <Pressable
-                    key={action.status}
-                    onPress={() => handleStatus(action.status, action.label)}
-                    style={[styles.btn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
-                  >
-                    <Feather name={action.icon} size={16} color={colors.primaryForeground} />
-                    <Text style={[styles.btnText, { color: colors.primaryForeground }]}>{action.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
+            {dispatcherAction && !isTerminal && (
+              <Pressable
+                onPress={() => handleStatus(dispatcherAction.status, dispatcherAction.label)}
+                style={[styles.btn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
+              >
+                <Feather name={dispatcherAction.icon} size={16} color={colors.primaryForeground} />
+                <Text style={[styles.btnText, { color: colors.primaryForeground }]}>{dispatcherAction.label}</Text>
+              </Pressable>
             )}
           </View>
         )}
@@ -338,35 +368,20 @@ export default function OrderDetailScreen() {
           <OrderTimeline history={getHistoryForOrder(order.id)} />
         </View>
 
-        {/* Business status advance */}
-        {canBusinessUpdate && (
+        {/* Business actions — strictly gated */}
+        {isBusinessRole && !isTerminal && businessAction && (
           <View style={styles.actionsCol}>
             {order.status === "PENDING" && (
               <Pressable onPress={confirmReject} style={[styles.rejectBtn, { borderRadius: colors.radius }]}>
                 <Text style={styles.rejectText}>Reject Order</Text>
               </Pressable>
             )}
-            {BUSINESS_FLOW.filter((s) => s !== order.status).slice(0, 1).map((status) => (
-              <Pressable
-                key={status}
-                onPress={() => handleStatus(status, status.replaceAll("_", " "))}
-                style={[styles.btn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
-              >
-                <Text style={[styles.btnText, { color: colors.primaryForeground }]}>
-                  {status === "ACCEPTED" ? "Accept Order" : status.replaceAll("_", " ")}
-                </Text>
-              </Pressable>
-            ))}
-            {/* After customer pays: business can send Out for Delivery */}
-            {(order.status === "PAID") && (
-              <Pressable
-                onPress={() => handleStatus("OUT_FOR_DELIVERY", "Out for Delivery")}
-                style={[styles.btn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
-              >
-                <Feather name="truck" size={16} color={colors.primaryForeground} />
-                <Text style={[styles.btnText, { color: colors.primaryForeground }]}>Send Out for Delivery</Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => handleStatus(businessAction.to, businessAction.label)}
+              style={[styles.btn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
+            >
+              <Text style={[styles.btnText, { color: colors.primaryForeground }]}>{businessAction.label}</Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -417,6 +432,9 @@ const styles = StyleSheet.create({
   payNowSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)", marginTop: 2 },
   paidBanner: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, marginBottom: 12 },
   paidBannerText: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  waitBanner: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderWidth: 1, marginBottom: 12 },
+  waitTitle: { fontSize: 13, fontFamily: "Inter_700Bold", marginBottom: 3 },
+  waitBody: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
   sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
   infoRow: { flexDirection: "row", alignItems: "flex-start", gap: 9 },
   infoText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
@@ -432,7 +450,6 @@ const styles = StyleSheet.create({
   locationToggleRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   toggleLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   toggleSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  dispatcherActions: { gap: 8, marginTop: 4 },
   actionsCol: { gap: 10 },
   btn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, paddingHorizontal: 14 },
   btnText: { fontSize: 14, fontFamily: "Inter_700Bold" },

@@ -11,31 +11,173 @@ import { useOrders } from "@/contexts/OrdersContext";
 import { useColors } from "@/hooks/useColors";
 import { Order, OrderStatus } from "@/types";
 
-type Action = { status: OrderStatus; label: string; icon: keyof typeof Feather.glyphMap };
+/**
+ * Strict dispatcher flow:
+ * ACCEPTED/PENDING → can mark PICKED_UP (pickup from customer)
+ * PICKED_UP / IN_PROGRESS → laundromat processing — dispatcher waits
+ * READY → customer must pay first — dispatcher CANNOT act
+ * PAID → dispatcher can mark OUT_FOR_DELIVERY
+ * OUT_FOR_DELIVERY → dispatcher can mark DELIVERED
+ *
+ * Dispatcher CANNOT skip the payment gate (READY → PAID).
+ */
+type Action = { status: OrderStatus; label: string; icon: keyof typeof Feather.glyphMap; color?: string };
 
-const QUICK_ACTIONS: Action[] = [
-  { status: "PICKED_UP", label: "Picked Up", icon: "shopping-bag" },
-  { status: "OUT_FOR_DELIVERY", label: "Out for Delivery", icon: "truck" },
-  { status: "DELIVERED", label: "Delivered", icon: "check-circle" },
-];
-
-function nextActions(currentStatus: OrderStatus): Action[] {
-  const idx = QUICK_ACTIONS.findIndex((a) => a.status === currentStatus);
-  // All actions after the current status (or all if PENDING/ACCEPTED/IN_PROGRESS)
-  if (idx === -1) return QUICK_ACTIONS.slice(0, 1); // first action available
-  return QUICK_ACTIONS.slice(idx + 1);
+function getNextAction(currentStatus: OrderStatus): Action | null {
+  if (currentStatus === "ACCEPTED" || currentStatus === "PENDING") {
+    return { status: "PICKED_UP", label: "Mark Picked Up", icon: "shopping-bag" };
+  }
+  if (currentStatus === "PAID") {
+    return { status: "OUT_FOR_DELIVERY", label: "Out for Delivery", icon: "truck", color: "#059669" };
+  }
+  if (currentStatus === "OUT_FOR_DELIVERY") {
+    return { status: "DELIVERED", label: "Mark Delivered", icon: "check-circle", color: "#059669" };
+  }
+  return null;
 }
+
+function PaymentGateNotice({ order, colors }: {
+  order: Order;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  if (order.status === "READY") {
+    return (
+      <View style={[gateStyles.card, { backgroundColor: "#d9770608", borderColor: "#d9770630", borderRadius: colors.radius }]}>
+        <Feather name="clock" size={15} color="#d97706" />
+        <View style={{ flex: 1 }}>
+          <Text style={gateStyles.title}>Waiting for customer payment</Text>
+          <Text style={gateStyles.body}>
+            Order is ready. The customer needs to pay ₦{order.totalAmount.toLocaleString()} before you can proceed to delivery.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+  if (order.status === "IN_PROGRESS" || order.status === "PICKED_UP") {
+    return (
+      <View style={[gateStyles.card, { backgroundColor: "#1d4ed808", borderColor: "#1d4ed820", borderRadius: colors.radius }]}>
+        <Feather name="loader" size={14} color="#1d4ed8" />
+        <Text style={[gateStyles.body, { color: "#1d4ed8" }]}>Laundromat is processing — standby for delivery assignment.</Text>
+      </View>
+    );
+  }
+  return null;
+}
+
+const gateStyles = StyleSheet.create({
+  card: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 12, borderWidth: 1, marginTop: 4 },
+  title: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#d97706", marginBottom: 2 },
+  body: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#d97706", lineHeight: 16 },
+});
 
 export default function DispatcherDeliveries() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { orders, isLoading, refreshOrders, updateOrderStatus } = useOrders();
+
+  // Show all orders assigned to this dispatcher
   const assigned = orders.filter((o) => !!o.assignedDriverName);
+
+  // Separate active from completed
+  const active = assigned.filter((o) => o.status !== "DELIVERED" && o.status !== "CANCELLED");
+  const completed = assigned.filter((o) => o.status === "DELIVERED" || o.status === "CANCELLED");
 
   const handleAction = async (order: Order, action: Action) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await updateOrderStatus(order.id, action.status, `${action.label} — dispatcher update`);
+  };
+
+  const renderCard = (order: Order) => {
+    const nextAction = getNextAction(order.status);
+    const isCompleted = order.status === "DELIVERED" || order.status === "CANCELLED";
+    const isPaid = order.status === "PAID";
+
+    return (
+      <Pressable
+        key={order.id}
+        onPress={() => router.push({ pathname: "/order/[id]", params: { id: order.id } } as any)}
+        style={[styles.card, {
+          backgroundColor: colors.card,
+          borderRadius: colors.radius,
+          borderLeftColor: isPaid ? "#059669" : order.status === "READY" ? "#d97706" : colors.primary,
+          borderLeftWidth: 3,
+        }]}
+      >
+        {/* Header */}
+        <View style={styles.cardHeader}>
+          <View>
+            <Text style={[styles.orderNum, { color: colors.foreground }]}>#{order.orderNumber}</Text>
+            <Text style={[styles.customerName, { color: colors.mutedForeground }]}>{order.customerName}</Text>
+          </View>
+          <StatusBadge status={order.status} />
+        </View>
+
+        {/* Amount */}
+        <View style={styles.amountRow}>
+          <Text style={[styles.amount, { color: isPaid ? "#059669" : colors.primary }]}>
+            ₦{order.totalAmount.toLocaleString()}
+          </Text>
+          {isPaid && (
+            <View style={[styles.paidBadge, { backgroundColor: "#05966916" }]}>
+              <Feather name="check-circle" size={11} color="#059669" />
+              <Text style={styles.paidBadgeText}>Paid</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Addresses */}
+        <View style={styles.infoRow}>
+          <Feather name="map-pin" size={13} color={colors.mutedForeground} />
+          <Text style={[styles.infoText, { color: colors.mutedForeground }]} numberOfLines={1}>
+            Pickup: {order.pickupAddress}
+          </Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Feather name="navigation" size={13} color={colors.mutedForeground} />
+          <Text style={[styles.infoText, { color: colors.mutedForeground }]} numberOfLines={1}>
+            Deliver: {order.deliveryAddress}
+          </Text>
+        </View>
+
+        {order.urgent && (
+          <View style={styles.urgentRow}>
+            <Feather name="zap" size={13} color="#ef4444" />
+            <Text style={styles.urgentText}>Urgent order</Text>
+          </View>
+        )}
+
+        {/* Payment gate notice */}
+        <PaymentGateNotice order={order} colors={colors} />
+
+        {/* Next action button — only shown when available */}
+        {!isCompleted && nextAction && (
+          <Pressable
+            onPress={(e) => { e.stopPropagation?.(); handleAction(order, nextAction); }}
+            style={[styles.actionBtn, {
+              backgroundColor: nextAction.color ?? colors.primary,
+              borderRadius: colors.radius,
+            }]}
+          >
+            <Feather name={nextAction.icon} size={15} color="#ffffff" />
+            <Text style={styles.actionText}>{nextAction.label}</Text>
+          </Pressable>
+        )}
+
+        {isCompleted && (
+          <View style={[styles.completedBadge, {
+            backgroundColor: order.status === "DELIVERED" ? "#05966910" : "#ef444410",
+            borderRadius: colors.radius,
+          }]}>
+            <Feather name={order.status === "DELIVERED" ? "check-circle" : "x-circle"} size={13}
+              color={order.status === "DELIVERED" ? "#059669" : "#ef4444"} />
+            <Text style={[styles.completedText, { color: order.status === "DELIVERED" ? "#059669" : "#ef4444" }]}>
+              {order.status === "DELIVERED" ? "Delivery complete" : "Cancelled"}
+            </Text>
+          </View>
+        )}
+      </Pressable>
+    );
   };
 
   return (
@@ -44,7 +186,7 @@ export default function DispatcherDeliveries() {
         <EmptyState
           icon="truck"
           title="No Deliveries"
-          message="Assigned pickup and delivery jobs will appear here after a business selects a dispatcher."
+          message="A business will assign you to a pickup once they accept an order. Complete your KYC and set your service area first."
         />
       ) : (
         <ScrollView
@@ -52,75 +194,24 @@ export default function DispatcherDeliveries() {
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshOrders} tintColor={colors.primary} />}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={[styles.title, { color: colors.foreground }]}>My Deliveries</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Tap a card to open full details or use the quick actions below.
-          </Text>
+          {active.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Active ({active.length})</Text>
+              <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+                Payment must be confirmed before proceeding to delivery.
+              </Text>
+              {active.map(renderCard)}
+            </>
+          )}
 
-          {assigned.map((order) => {
-            const actions = nextActions(order.status);
-            const isCompleted = order.status === "DELIVERED" || order.status === "CANCELLED";
-            return (
-              <Pressable
-                key={order.id}
-                onPress={() => router.push({ pathname: "/order/[id]", params: { id: order.id } } as any)}
-                style={[styles.card, { backgroundColor: colors.card, borderRadius: colors.radius }]}
-              >
-                {/* Header */}
-                <View style={styles.cardHeader}>
-                  <View>
-                    <Text style={[styles.orderNum, { color: colors.foreground }]}>#{order.orderNumber}</Text>
-                    <Text style={[styles.amount, { color: colors.mutedForeground }]}>
-                      ₦{order.totalAmount.toLocaleString()}
-                    </Text>
-                  </View>
-                  <StatusBadge status={order.status} />
-                </View>
-
-                {/* Addresses */}
-                <View style={styles.infoRow}>
-                  <Feather name="map-pin" size={13} color={colors.mutedForeground} />
-                  <Text style={[styles.infoText, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {order.pickupAddress}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Feather name="navigation" size={13} color={colors.mutedForeground} />
-                  <Text style={[styles.infoText, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {order.deliveryAddress}
-                  </Text>
-                </View>
-                {order.urgent && (
-                  <View style={styles.urgentRow}>
-                    <Feather name="zap" size={13} color="#ef4444" />
-                    <Text style={styles.urgentText}>Urgent order</Text>
-                  </View>
-                )}
-
-                {/* Quick actions */}
-                {!isCompleted && actions.length > 0 && (
-                  <View style={styles.actionsRow}>
-                    {actions.map((action) => (
-                      <Pressable
-                        key={action.status}
-                        onPress={(e) => { e.stopPropagation?.(); handleAction(order, action); }}
-                        style={[styles.actionBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
-                      >
-                        <Feather name={action.icon} size={14} color={colors.primaryForeground} />
-                        <Text style={[styles.actionText, { color: colors.primaryForeground }]}>{action.label}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-                {isCompleted && (
-                  <View style={[styles.completedBadge, { backgroundColor: "#10b98116", borderRadius: colors.radius }]}>
-                    <Feather name="check" size={13} color="#10b981" />
-                    <Text style={styles.completedText}>Delivery complete</Text>
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
+          {completed.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 20 }]}>
+                Completed ({completed.length})
+              </Text>
+              {completed.map(renderCard)}
+            </>
+          )}
         </ScrollView>
       )}
     </View>
@@ -129,19 +220,22 @@ export default function DispatcherDeliveries() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  title: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 4 },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18, marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18, marginBottom: 14 },
   card: { padding: 16, marginBottom: 12, gap: 10 },
   cardHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
   orderNum: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  amount: { fontSize: 13, fontFamily: "Inter_500Medium", marginTop: 2 },
+  customerName: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  amountRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  amount: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  paidBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
+  paidBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#059669" },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   infoText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
   urgentRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   urgentText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#ef4444" },
-  actionsRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 4 },
-  actionBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 14 },
-  actionText: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  completedBadge: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 9, paddingHorizontal: 12, marginTop: 4 },
-  completedText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#10b981" },
+  actionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, marginTop: 4 },
+  actionText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#ffffff" },
+  completedBadge: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 9, paddingHorizontal: 12 },
+  completedText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
