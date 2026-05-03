@@ -9,8 +9,18 @@ import React, {
   useState,
 } from "react";
 
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  isSupabaseConfigured,
+  supabase,
+  testSupabaseConnection,
+} from "@/lib/supabase";
 import { UserRole } from "@/types";
+
+export type ConnectionStatus =
+  | "checking"
+  | "connected"
+  | "unreachable"
+  | "unconfigured";
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +28,7 @@ interface AuthContextType {
   role: UserRole | null;
   isLoading: boolean;
   isDemo: boolean;
+  connectionStatus: ConnectionStatus;
   signUp: (
     email: string,
     password: string,
@@ -28,6 +39,7 @@ interface AuthContextType {
     email: string,
     password: string,
   ) => Promise<{ error: string | null }>;
+  signInDemo: (fullName: string, role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -37,8 +49,10 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   isLoading: true,
   isDemo: false,
+  connectionStatus: "checking",
   signUp: async () => ({ error: null }),
   signIn: async () => ({ error: null }),
+  signInDemo: async () => {},
   signOut: async () => {},
 });
 
@@ -46,6 +60,7 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+// ── Route guard ────────────────────────────────────────────────────────────
 function useProtectedRoute(
   user: User | null,
   role: UserRole | null,
@@ -56,33 +71,24 @@ function useProtectedRoute(
 
   useEffect(() => {
     if (isLoading) return;
-
     const inAuthGroup = segments[0] === "(auth)";
-
     if (!user && !inAuthGroup) {
       router.replace("/(auth)/login");
     } else if (user && inAuthGroup) {
       switch (role) {
-        case "BUSINESS":
-          router.replace("/(business)/");
-          break;
-        case "DISPATCHER":
-          router.replace("/(dispatcher)/");
-          break;
-        case "ADMIN":
-          router.replace("/(admin)/");
-          break;
-        default:
-          router.replace("/(customer)/");
-          break;
+        case "BUSINESS":   router.replace("/(business)/");   break;
+        case "DISPATCHER": router.replace("/(dispatcher)/"); break;
+        case "ADMIN":      router.replace("/(admin)/");      break;
+        default:           router.replace("/(customer)/");   break;
       }
     }
   }, [user, role, segments, isLoading]);
 }
 
-function createDemoUser(fullName: string, email: string, role: UserRole): User {
+// ── Helpers ────────────────────────────────────────────────────────────────
+function makeDemoUser(fullName: string, email: string, role: UserRole): User {
   return {
-    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+    id: `demo_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`,
     email,
     app_metadata: {},
     user_metadata: { full_name: fullName, role },
@@ -91,19 +97,43 @@ function createDemoUser(fullName: string, email: string, role: UserRole): User {
   } as User;
 }
 
+// Wraps a Supabase call — converts any thrown error to { error: string }
+async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (e: any) {
+    console.log("[LaundryLink] Supabase error (caught):", e?.message ?? e);
+    return fallback;
+  }
+}
+
+// ── Provider ───────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [user, setUser]           = useState<User | null>(null);
+  const [session, setSession]     = useState<Session | null>(null);
+  const [role, setRole]           = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isDemo = !isSupabaseConfigured;
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
+    isSupabaseConfigured ? "checking" : "unconfigured",
+  );
+
+  // isDemo = anything other than a confirmed live Supabase connection
+  const isDemo = connectionStatus !== "connected";
 
   useEffect(() => {
+    let authSub: { unsubscribe: () => void } | null = null;
+
     const init = async () => {
+      // Restore any previously persisted demo session (instant, no network)
+      const [savedUser, savedRole] = await Promise.all([
+        AsyncStorage.getItem("demo_user").catch(() => null),
+        AsyncStorage.getItem("demo_role").catch(() => null),
+      ]);
+
+      // ── No keys configured → demo immediately ─────────────────────────
       if (!isSupabaseConfigured) {
-        const savedRole = await AsyncStorage.getItem("demo_role");
-        const savedUser = await AsyncStorage.getItem("demo_user");
-        if (savedRole && savedUser) {
+        setConnectionStatus("unconfigured");
+        if (savedUser && savedRole) {
           try {
             setUser(JSON.parse(savedUser));
             setRole(savedRole as UserRole);
@@ -113,40 +143,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data: { session: s } } = await supabase.auth.getSession();
+      // ── Keys present → probe the server before making any auth calls ───
+      // testSupabaseConnection() uses plain fetch (not the Supabase client)
+      // so no GoTrueClient network requests happen before this resolves.
+      const reachable = await testSupabaseConnection();
+
+      if (!reachable) {
+        setConnectionStatus("unreachable");
+        if (savedUser && savedRole) {
+          try {
+            setUser(JSON.parse(savedUser));
+            setRole(savedRole as UserRole);
+          } catch {}
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // ── Server is reachable → activate auto-refresh and restore session ─
+      setConnectionStatus("connected");
+
+      // Enable background token refresh now that we know the server is up.
+      // This avoids the "multiple GoTrueClient instances" warning because
+      // we reuse the single supabase client created in lib/supabase.ts.
+      try { supabase.auth.startAutoRefresh(); } catch {}
+
+      const sessionResult = await safe(
+        () => supabase.auth.getSession(),
+        { data: { session: null }, error: null },
+      );
+      const s = sessionResult.data.session;
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        const userRole =
-          (s.user.user_metadata?.role as UserRole) || "CUSTOMER";
-        setRole(userRole);
+        setRole((s.user.user_metadata?.role as UserRole) || "CUSTOMER");
       }
+
+      // Register auth state listener ONLY after connection is confirmed.
+      // This prevents Supabase from firing network requests during the
+      // connection-check phase.
+      const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        setRole(
+          newSession?.user
+            ? ((newSession.user.user_metadata?.role as UserRole) || "CUSTOMER")
+            : null,
+        );
+      });
+      authSub = data.subscription;
+
       setIsLoading(false);
     };
 
     init();
-
-    if (isSupabaseConfigured) {
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, s) => {
-        setSession(s);
-        setUser(s?.user ?? null);
-        if (s?.user) {
-          const userRole =
-            (s.user.user_metadata?.role as UserRole) || "CUSTOMER";
-          setRole(userRole);
-        } else {
-          setRole(null);
-        }
-      });
-
-      return () => subscription.unsubscribe();
-    }
+    return () => { authSub?.unsubscribe(); };
   }, []);
 
   useProtectedRoute(user, role, isLoading);
 
+  // ── Demo sign-in (role buttons on login screen) ────────────────────────
+  const signInDemo = useCallback(async (fullName: string, demoRole: UserRole) => {
+    const demoUser = makeDemoUser(
+      fullName,
+      `${demoRole.toLowerCase()}@demo.local`,
+      demoRole,
+    );
+    setUser(demoUser);
+    setRole(demoRole);
+    await AsyncStorage.setItem("demo_role", demoRole);
+    await AsyncStorage.setItem("demo_user", JSON.stringify(demoUser));
+  }, []);
+
+  // ── Sign up ────────────────────────────────────────────────────────────
   const signUp = useCallback(
     async (
       email: string,
@@ -154,8 +223,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fullName: string,
       selectedRole: UserRole,
     ) => {
-      if (!isSupabaseConfigured) {
-        const demoUser = createDemoUser(fullName, email, selectedRole);
+      if (isDemo) {
+        const demoUser = makeDemoUser(fullName, email, selectedRole);
         setUser(demoUser);
         setRole(selectedRole);
         await AsyncStorage.setItem("demo_role", selectedRole);
@@ -163,60 +232,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: null };
       }
 
-      const { error, data } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            role: selectedRole,
-          },
+      const result = await safe(
+        () =>
+          supabase.auth.signUp({
+            email,
+            password,
+            options: { data: { full_name: fullName, role: selectedRole } },
+          }),
+        {
+          data: { user: null, session: null },
+          error: { message: "Network error — please check your connection." } as any,
         },
-      });
-      if (!error) {
-        const { error: updateError, data: updatedData } =
-          await supabase.auth.updateUser({
-            data: {
-              full_name: fullName,
-              role: selectedRole,
-            },
-          });
+      );
+      if (result.error) return { error: result.error.message };
 
-        if (updatedData.user) {
-          setUser(updatedData.user);
-        } else if (data.user) {
-          setUser(data.user);
-        }
-
-        setRole(selectedRole);
-        await AsyncStorage.setItem("user_role", selectedRole);
-
-        if (
-          updateError &&
-          !updateError.message.toLowerCase().includes("session")
-        ) {
-          return { error: updateError.message };
-        }
-      }
-      return { error: error?.message ?? null };
+      const updateResult = await safe(
+        () =>
+          supabase.auth.updateUser({
+            data: { full_name: fullName, role: selectedRole },
+          }),
+        { data: { user: null }, error: null },
+      );
+      const finalUser = updateResult.data.user ?? result.data.user;
+      if (finalUser) setUser(finalUser);
+      setRole(selectedRole);
+      await AsyncStorage.setItem("user_role", selectedRole);
+      return { error: null };
     },
-    [],
+    [isDemo],
   );
 
+  // ── Sign in ────────────────────────────────────────────────────────────
   const signIn = useCallback(
     async (email: string, password: string) => {
-      if (!isSupabaseConfigured) {
-        const savedUser = await AsyncStorage.getItem("demo_user");
+      if (isDemo) {
+        const savedUser = await AsyncStorage.getItem("demo_user").catch(() => null);
         if (savedUser) {
           try {
             const parsed = JSON.parse(savedUser);
             setUser(parsed);
-            const savedRole = (parsed.user_metadata?.role as UserRole) || "CUSTOMER";
-            setRole(savedRole);
+            setRole((parsed.user_metadata?.role as UserRole) || "CUSTOMER");
             return { error: null };
           } catch {}
         }
-        const demoUser = createDemoUser("Demo User", email, "CUSTOMER");
+        const demoUser = makeDemoUser("Demo User", email, "CUSTOMER");
         setUser(demoUser);
         setRole("CUSTOMER");
         await AsyncStorage.setItem("demo_role", "CUSTOMER");
@@ -224,37 +283,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: null };
       }
 
-      const { error, data } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (!error && data.user) {
-        const userRole =
-          (data.user.user_metadata?.role as UserRole) || "CUSTOMER";
-        setRole(userRole);
-        await AsyncStorage.setItem("user_role", userRole);
+      const result = await safe(
+        () => supabase.auth.signInWithPassword({ email, password }),
+        {
+          data: { user: null, session: null },
+          error: { message: "Network error — please check your connection." } as any,
+        },
+      );
+      if (result.error) return { error: result.error.message };
+      if (result.data.user) {
+        const r = (result.data.user.user_metadata?.role as UserRole) || "CUSTOMER";
+        setRole(r);
+        await AsyncStorage.setItem("user_role", r);
       }
-      return { error: error?.message ?? null };
+      return { error: null };
     },
-    [],
+    [isDemo],
   );
 
+  // ── Sign out ───────────────────────────────────────────────────────────
   const signOut = useCallback(async () => {
-    if (!isSupabaseConfigured) {
-      await AsyncStorage.removeItem("demo_role");
-      await AsyncStorage.removeItem("demo_user");
-      setUser(null);
-      setRole(null);
-      return;
+    if (!isDemo) {
+      await safe(() => supabase.auth.signOut(), undefined);
+      try { supabase.auth.stopAutoRefresh(); } catch {}
     }
-    await supabase.auth.signOut();
-    await AsyncStorage.removeItem("user_role");
+    await AsyncStorage.multiRemove(["demo_role", "demo_user", "user_role"]).catch(
+      () => {},
+    );
+    setUser(null);
     setRole(null);
-  }, []);
+    setSession(null);
+  }, [isDemo]);
 
   return (
     <AuthContext.Provider
-      value={{ user, session, role, isLoading, isDemo, signUp, signIn, signOut }}
+      value={{
+        user,
+        session,
+        role,
+        isLoading,
+        isDemo,
+        connectionStatus,
+        signUp,
+        signIn,
+        signInDemo,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>
