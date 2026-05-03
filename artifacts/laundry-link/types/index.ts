@@ -110,6 +110,8 @@ export interface OrderStatusHistory {
 }
 
 export interface CreateOrderInput {
+  businessId?: string;
+  businessName?: string;
   pickupAddress: string;
   deliveryAddress: string;
   items: OrderItem[];

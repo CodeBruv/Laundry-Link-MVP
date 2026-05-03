@@ -17,12 +17,19 @@ export default function AdminLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: true,
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.primaryForeground,
-        headerTitleStyle: { fontFamily: "Inter_600SemiBold" },
+        headerStyle: {
+          backgroundColor: colors.card,
+          shadowColor: colors.shadowColor ?? "#000",
+          shadowOpacity: colors.shadowOpacity ?? 0.07,
+          shadowOffset: { width: 0, height: 1 },
+          shadowRadius: 4,
+          elevation: 2,
+        },
+        headerTintColor: colors.primary,
+        headerTitleStyle: { fontFamily: "Inter_700Bold", color: colors.foreground },
         tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 11 },
         tabBarStyle: {
           position: "absolute",
@@ -36,7 +43,7 @@ export default function AdminLayout() {
           isIOS ? (
             <BlurView
               intensity={100}
-              tint={isDark ? "dark" : "light"}
+              tint={isDark ? "dark" : "extraLight"}
               style={StyleSheet.absoluteFill}
             />
           ) : isWeb ? (

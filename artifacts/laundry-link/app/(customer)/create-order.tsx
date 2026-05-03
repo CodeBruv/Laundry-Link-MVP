@@ -101,6 +101,8 @@ export default function CreateOrderScreen() {
       : items;
 
     const result = await createOrder({
+      businessId: selectedLaundromat.id,
+      businessName: selectedLaundromat.name,
       pickupAddress: pickupAddress.trim(),
       deliveryAddress: finalDeliveryAddress.trim(),
       items: allItems,

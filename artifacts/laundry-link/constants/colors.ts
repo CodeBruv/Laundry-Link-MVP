@@ -1,24 +1,24 @@
 const colors = {
   light: {
-    text: "#0f172a",
-    tint: "#0f2c5a",
+    text: "#000000",
+    tint: "#0a1d38",
 
-    background: "#f8fafc",
-    foreground: "#0f172a",
+    background: "#f6f7f9",
+    foreground: "#000000",
 
     card: "#ffffff",
-    cardForeground: "#0f172a",
+    cardForeground: "#000000",
 
-    primary: "#0f2c5a",
+    primary: "#0a1d38",
     primaryForeground: "#ffffff",
 
-    secondary: "#eff6ff",
-    secondaryForeground: "#1e40af",
+    secondary: "#3b4a60",
+    secondaryForeground: "#ffffff",
 
-    muted: "#f1f5f9",
-    mutedForeground: "#64748b",
+    muted: "#eef0f4",
+    mutedForeground: "#5a6478",
 
-    accent: "#2563eb",
+    accent: "#1a7ff9",
     accentForeground: "#ffffff",
 
     destructive: "#dc2626",
@@ -30,34 +30,33 @@ const colors = {
     warning: "#d97706",
     warningForeground: "#ffffff",
 
-    border: "#e2e8f0",
-    input: "#e2e8f0",
+    border: "#dde1ea",
+    input: "#dde1ea",
 
-    // Subtle card shadow tokens (used via StyleSheet directly)
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.06,
+    shadowColor: "#000000",
+    shadowOpacity: 0.07,
   },
 
   dark: {
     text: "#f1f5f9",
-    tint: "#93c5fd",
+    tint: "#1a7ff9",
 
-    background: "#0a0f1e",
+    background: "#080e1c",
     foreground: "#f1f5f9",
 
-    card: "#111827",
+    card: "#0f1828",
     cardForeground: "#f1f5f9",
 
-    primary: "#93c5fd",
-    primaryForeground: "#0a0f1e",
+    primary: "#1a7ff9",
+    primaryForeground: "#ffffff",
 
-    secondary: "#1e2d45",
-    secondaryForeground: "#93c5fd",
+    secondary: "#3b4a60",
+    secondaryForeground: "#f1f5f9",
 
-    muted: "#1e2d45",
-    mutedForeground: "#7b98b8",
+    muted: "#1a2540",
+    mutedForeground: "#7b94b8",
 
-    accent: "#3b82f6",
+    accent: "#1a7ff9",
     accentForeground: "#ffffff",
 
     destructive: "#f87171",
@@ -73,7 +72,7 @@ const colors = {
     input: "#1e2d45",
 
     shadowColor: "#000000",
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
   },
 
   radius: 14,

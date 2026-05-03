@@ -1,15 +1,15 @@
 import { LaundryService } from "@/types";
 
-export const DEFAULT_BUSINESS_ID = "cleanpro-abuja";
-export const DEFAULT_BUSINESS_NAME = "CleanPro Laundry Abuja";
+export const DEFAULT_BUSINESS_ID = "fresh-clean-jos";
+export const DEFAULT_BUSINESS_NAME = "Fresh & Clean Laundry Jos";
 
 export const LAUNDRY_SERVICES: LaundryService[] = [
   {
     id: "shirt-wash",
     businessId: DEFAULT_BUSINESS_ID,
-    name: "Shirt Wash",
-    description: "Wash, dry, and fold shirts",
-    pricePerUnit: 500,
+    name: "Shirt Wash & Iron",
+    description: "Wash, dry, and iron shirts",
+    pricePerUnit: 600,
     unit: "shirt",
     isActive: true,
   },
@@ -18,7 +18,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
     businessId: DEFAULT_BUSINESS_ID,
     name: "Trouser Press",
     description: "Steam press for trousers",
-    pricePerUnit: 800,
+    pricePerUnit: 900,
     unit: "trouser",
     isActive: true,
   },
@@ -26,8 +26,8 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
     id: "native-wear",
     businessId: DEFAULT_BUSINESS_ID,
     name: "Native Wear",
-    description: "Careful wash and press for native wear",
-    pricePerUnit: 1500,
+    description: "Careful wash and press for native attire",
+    pricePerUnit: 1800,
     unit: "set",
     isActive: true,
   },
@@ -35,9 +35,27 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
     id: "bedsheet",
     businessId: DEFAULT_BUSINESS_ID,
     name: "Bedsheet Wash",
-    description: "Deep wash for bedding",
-    pricePerUnit: 1200,
+    description: "Deep wash for bedding and duvet covers",
+    pricePerUnit: 1500,
     unit: "sheet",
+    isActive: true,
+  },
+  {
+    id: "suit",
+    businessId: DEFAULT_BUSINESS_ID,
+    name: "Suit (Dry Clean)",
+    description: "Professional dry cleaning for suits",
+    pricePerUnit: 3500,
+    unit: "suit",
+    isActive: true,
+  },
+  {
+    id: "dress",
+    businessId: DEFAULT_BUSINESS_ID,
+    name: "Ladies Dress",
+    description: "Gentle wash and iron for dresses",
+    pricePerUnit: 1200,
+    unit: "dress",
     isActive: true,
   },
   {
@@ -52,7 +70,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
 ];
 
 export const DISPATCHERS = [
-  { id: "11111111-1111-4111-8111-111111111111", name: "Amina Yusuf" },
+  { id: "11111111-1111-4111-8111-111111111111", name: "Aminu Suleiman" },
   { id: "22222222-2222-4222-8222-222222222222", name: "Daniel Okafor" },
-  { id: "33333333-3333-4333-8333-333333333333", name: "Musa Bello" },
+  { id: "33333333-3333-4333-8333-333333333333", name: "Chioma Eze" },
 ];
