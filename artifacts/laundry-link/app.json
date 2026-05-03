@@ -63,12 +63,6 @@
         }
       ],
       [
-        "expo-camera",
-        {
-          "cameraPermission": "LaundryLink uses your camera for KYC verification."
-        }
-      ],
-      [
         "expo-location",
         {
           "locationWhenInUsePermission": "LaundryLink uses your location to show nearby laundromats."
