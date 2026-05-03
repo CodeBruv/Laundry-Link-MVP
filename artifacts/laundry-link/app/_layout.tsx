@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -17,10 +17,11 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OfflineBanner } from "@/components/OfflineBanner";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { OrdersProvider } from "@/contexts/OrdersContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { useNotifications } from "@/hooks/useNotifications";
+import colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,15 +33,34 @@ function AppServices() {
 }
 
 function RootLayoutNav() {
+  const scheme = useColorScheme();
+  const bg = scheme === "dark" ? colors.dark.background : colors.light.background;
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        // Enable native swipe-back gesture on iOS & gesture nav on Android
+        gestureEnabled: true,
+        gestureDirection: "horizontal",
+        animation: "slide_from_right",
+        contentStyle: { backgroundColor: bg },
+      }}
+    >
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(customer)" />
       <Stack.Screen name="(business)" />
       <Stack.Screen name="(dispatcher)" />
       <Stack.Screen name="(admin)" />
-      <Stack.Screen name="order/[id]" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="order/[id]"
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
+          animation: "slide_from_right",
+        }}
+      />
     </Stack>
   );
 }
@@ -71,11 +91,9 @@ export default function RootLayout() {
                 <SubscriptionProvider>
                   <OrdersProvider>
                     <AppServices />
-                    <View style={styles.shell}>
-                      <DemoModeBanner />
-                      <OfflineBanner />
-                      <RootLayoutNav />
-                    </View>
+                    <DemoModeBanner />
+                    <OfflineBanner />
+                    <RootLayoutNav />
                   </OrdersProvider>
                 </SubscriptionProvider>
               </AuthProvider>

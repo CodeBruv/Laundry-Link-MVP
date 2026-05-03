@@ -17,45 +17,48 @@ export default function CustomerLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: true,
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.primaryForeground,
-        headerTitleStyle: { fontFamily: "Inter_600SemiBold" },
-        tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 11 },
+        headerStyle: {
+          backgroundColor: colors.card,
+          shadowColor: colors.shadowColor,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: colors.shadowOpacity,
+          shadowRadius: 4,
+          elevation: 2,
+        },
+        headerTintColor: colors.primary,
+        headerTitleStyle: { fontFamily: "Inter_700Bold", fontSize: 17, color: colors.foreground },
+        tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 10 },
         tabBarStyle: {
           position: "absolute",
           backgroundColor: isIOS ? "transparent" : colors.card,
-          borderTopWidth: isWeb ? 1 : 0,
+          borderTopWidth: 1,
           borderTopColor: colors.border,
-          elevation: 0,
+          elevation: 8,
           ...(isWeb ? { height: 84 } : {}),
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
+              intensity={95}
+              tint={isDark ? "dark" : "extraLight"}
               style={StyleSheet.absoluteFill}
             />
-          ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.card },
-              ]}
-            />
-          ) : null,
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.card }]} />
+          ),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
-          tabBarIcon: ({ color }) =>
+          title: "LaundryLink",
+          tabBarLabel: "Home",
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="house" tintColor={color} size={22} />
+              <SymbolView name={focused ? "house.fill" : "house"} tintColor={color} size={22} />
             ) : (
               <Feather name="home" size={22} color={color} />
             ),
@@ -64,10 +67,10 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="orders"
         options={{
-          title: "Orders",
-          tabBarIcon: ({ color }) =>
+          title: "My Orders",
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="list.bullet" tintColor={color} size={22} />
+              <SymbolView name={focused ? "list.bullet.rectangle.fill" : "list.bullet.rectangle"} tintColor={color} size={22} />
             ) : (
               <Feather name="package" size={22} color={color} />
             ),
@@ -79,9 +82,9 @@ export default function CustomerLayout() {
           title: "New Order",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="plus.circle.fill" tintColor={color} size={22} />
+              <SymbolView name="plus.circle.fill" tintColor={color} size={26} />
             ) : (
-              <Feather name="plus-circle" size={22} color={color} />
+              <Feather name="plus-circle" size={26} color={color} />
             ),
         }}
       />
@@ -89,9 +92,9 @@ export default function CustomerLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color }) =>
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="person" tintColor={color} size={22} />
+              <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={22} />
             ) : (
               <Feather name="user" size={22} color={color} />
             ),

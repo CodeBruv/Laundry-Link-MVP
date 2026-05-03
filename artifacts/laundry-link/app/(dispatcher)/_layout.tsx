@@ -20,42 +20,45 @@ export default function DispatcherLayout() {
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: true,
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.primaryForeground,
-        headerTitleStyle: { fontFamily: "Inter_600SemiBold" },
-        tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 11 },
+        headerStyle: {
+          backgroundColor: colors.card,
+          shadowColor: colors.shadowColor,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: colors.shadowOpacity,
+          shadowRadius: 4,
+          elevation: 2,
+        },
+        headerTintColor: colors.primary,
+        headerTitleStyle: { fontFamily: "Inter_700Bold", fontSize: 17, color: colors.foreground },
+        tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 10 },
         tabBarStyle: {
           position: "absolute",
           backgroundColor: isIOS ? "transparent" : colors.card,
-          borderTopWidth: isWeb ? 1 : 0,
+          borderTopWidth: 1,
           borderTopColor: colors.border,
-          elevation: 0,
+          elevation: 8,
           ...(isWeb ? { height: 84 } : {}),
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
+              intensity={95}
+              tint={isDark ? "dark" : "extraLight"}
               style={StyleSheet.absoluteFill}
             />
-          ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.card },
-              ]}
-            />
-          ) : null,
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.card }]} />
+          ),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) =>
+          title: "Dispatcher Hub",
+          tabBarLabel: "Dashboard",
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="house" tintColor={color} size={22} />
+              <SymbolView name={focused ? "house.fill" : "house"} tintColor={color} size={22} />
             ) : (
               <Feather name="home" size={22} color={color} />
             ),
@@ -65,9 +68,9 @@ export default function DispatcherLayout() {
         name="deliveries"
         options={{
           title: "Deliveries",
-          tabBarIcon: ({ color }) =>
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="car" tintColor={color} size={22} />
+              <SymbolView name={focused ? "car.fill" : "car"} tintColor={color} size={22} />
             ) : (
               <Feather name="truck" size={22} color={color} />
             ),
@@ -76,16 +79,17 @@ export default function DispatcherLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) =>
+          title: "My Profile",
+          tabBarLabel: "Profile",
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="person" tintColor={color} size={22} />
+              <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={22} />
             ) : (
               <Feather name="user" size={22} color={color} />
             ),
         }}
       />
-      {/* Hidden screens reachable via router.push */}
+      {/* Hidden screens */}
       <Tabs.Screen name="vehicle-details" options={{ href: null, title: "Vehicle Details" }} />
       <Tabs.Screen name="service-area" options={{ href: null, title: "Service Area" }} />
       <Tabs.Screen name="kyc" options={{ href: null, title: "KYC Documents" }} />

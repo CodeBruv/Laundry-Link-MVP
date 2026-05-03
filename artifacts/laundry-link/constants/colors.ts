@@ -1,24 +1,24 @@
 const colors = {
   light: {
-    text: "#111827",
-    tint: "#0a2342",
+    text: "#0f172a",
+    tint: "#0f2c5a",
 
-    background: "#f7f9fc",
-    foreground: "#111827",
+    background: "#f8fafc",
+    foreground: "#0f172a",
 
     card: "#ffffff",
-    cardForeground: "#111827",
+    cardForeground: "#0f172a",
 
-    primary: "#0a2342",
+    primary: "#0f2c5a",
     primaryForeground: "#ffffff",
 
-    secondary: "#e8eef8",
-    secondaryForeground: "#0a2342",
+    secondary: "#eff6ff",
+    secondaryForeground: "#1e40af",
 
-    muted: "#eef1f8",
+    muted: "#f1f5f9",
     mutedForeground: "#64748b",
 
-    accent: "#1d4ed8",
+    accent: "#2563eb",
     accentForeground: "#ffffff",
 
     destructive: "#dc2626",
@@ -30,30 +30,34 @@ const colors = {
     warning: "#d97706",
     warningForeground: "#ffffff",
 
-    border: "#dde3ef",
-    input: "#dde3ef",
+    border: "#e2e8f0",
+    input: "#e2e8f0",
+
+    // Subtle card shadow tokens (used via StyleSheet directly)
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.06,
   },
 
   dark: {
     text: "#f1f5f9",
-    tint: "#7eb3e0",
+    tint: "#93c5fd",
 
-    background: "#09162a",
+    background: "#0a0f1e",
     foreground: "#f1f5f9",
 
-    card: "#102035",
+    card: "#111827",
     cardForeground: "#f1f5f9",
 
-    primary: "#7eb3e0",
-    primaryForeground: "#09162a",
+    primary: "#93c5fd",
+    primaryForeground: "#0a0f1e",
 
-    secondary: "#172d4a",
-    secondaryForeground: "#9dc3e0",
+    secondary: "#1e2d45",
+    secondaryForeground: "#93c5fd",
 
-    muted: "#172d4a",
+    muted: "#1e2d45",
     mutedForeground: "#7b98b8",
 
-    accent: "#4b82f0",
+    accent: "#3b82f6",
     accentForeground: "#ffffff",
 
     destructive: "#f87171",
@@ -65,11 +69,14 @@ const colors = {
     warning: "#fbbf24",
     warningForeground: "#1c1c1c",
 
-    border: "#1c3350",
-    input: "#1c3350",
+    border: "#1e2d45",
+    input: "#1e2d45",
+
+    shadowColor: "#000000",
+    shadowOpacity: 0.3,
   },
 
-  radius: 12,
+  radius: 14,
 };
 
 export default colors;

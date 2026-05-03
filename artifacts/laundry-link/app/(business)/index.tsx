@@ -1,6 +1,15 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
@@ -10,124 +19,193 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useColors } from "@/hooks/useColors";
 import { daysLeft } from "@/lib/subscription";
 
+const STATUS_COLOR: Record<string, string> = {
+  PENDING: "#f59e0b",
+  ACCEPTED: "#2563eb",
+  PICKED_UP: "#2563eb",
+  IN_PROGRESS: "#7c3aed",
+  READY: "#059669",
+  PAID: "#059669",
+  OUT_FOR_DELIVERY: "#10b981",
+  DELIVERED: "#64748b",
+  CANCELLED: "#ef4444",
+};
+
 export default function BusinessDashboard() {
   const colors = useColors();
   const { user } = useAuth();
-  const { orders } = useOrders();
-  const { subscription, isSubscribed, isLoading } = useSubscription();
+  const { orders, isLoading, refreshOrders } = useOrders();
+  const { subscription, isSubscribed, isLoading: subLoading } = useSubscription();
   const insets = useSafeAreaInsets();
   const [showPaywall, setShowPaywall] = useState(false);
 
   const businessName = user?.user_metadata?.full_name || "Your Business";
+  const firstName = businessName.split(" ")[0];
+
   const completed = orders.filter((o) => o.status === "DELIVERED").length;
   const pending = orders.filter((o) => o.status === "PENDING").length;
-  const paid = orders.filter((o) => o.status === "PAID").length;
+  const activeCount = orders.filter((o) => !["DELIVERED", "CANCELLED"].includes(o.status)).length;
   const revenue = orders
-    .filter((o) => o.status === "PAID" || o.status === "DELIVERED")
+    .filter((o) => ["PAID", "DELIVERED", "OUT_FOR_DELIVERY"].includes(o.status))
     .reduce((sum, o) => sum + o.totalAmount, 0);
 
-  const stats = [
-    { label: "Total Orders", value: String(orders.length), icon: "package" as const, color: colors.primary },
-    { label: "Pending", value: String(pending), icon: "clock" as const, color: "#f59e0b" },
-    { label: "Completed", value: String(completed), icon: "check-circle" as const, color: "#22c55e" },
-    { label: "Paid Orders", value: String(paid), icon: "dollar-sign" as const, color: "#059669" },
-    { label: "Revenue", value: `₦${revenue.toLocaleString()}`, icon: "trending-up" as const, color: colors.accent },
-  ];
-
   const days = daysLeft(subscription);
+
+  const recentOrders = orders
+    .filter((o) => !["DELIVERED", "CANCELLED"].includes(o.status))
+    .slice(0, 3);
+
+  const shadow = {
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: colors.shadowOpacity,
+    shadowRadius: 8,
+    elevation: 3,
+  };
 
   return (
     <>
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 80) }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 90) }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshOrders} tintColor={colors.accent} />}
       >
-        {/* Subscription status banner */}
-        {!isLoading && (
-          <Pressable
-            onPress={() => setShowPaywall(true)}
-            style={[
-              styles.subBanner,
-              {
-                backgroundColor: isSubscribed ? "#10b98112" : colors.primary + "12",
-                borderColor: isSubscribed ? "#10b98140" : colors.primary + "40",
-                borderRadius: colors.radius,
-              },
-            ]}
-          >
-            <Feather
-              name={isSubscribed ? "check-circle" : "zap"}
-              size={16}
-              color={isSubscribed ? "#10b981" : colors.primary}
-            />
-            <Text style={[styles.subBannerText, { color: isSubscribed ? "#10b981" : colors.primary }]}>
-              {isSubscribed
-                ? `${subscription.isTrial ? "Trial" : subscription.tier} plan · ${days}d remaining`
-                : "No active subscription — tap to subscribe"}
-            </Text>
-            <Feather name="chevron-right" size={14} color={isSubscribed ? "#10b981" : colors.primary} />
-          </Pressable>
-        )}
+        {/* Hero header */}
+        <View style={[styles.hero, { backgroundColor: colors.primary }]}>
+          <Text style={styles.heroGreet}>Welcome back, {firstName} 👋</Text>
+          <Text style={styles.heroTitle}>{businessName}</Text>
+          <Text style={styles.heroSub}>Business Dashboard</Text>
 
-        {/* Greeting */}
-        <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Welcome back</Text>
-        <Text style={[styles.businessName, { color: colors.foreground }]}>{businessName}</Text>
-
-        {/* Subscription gate */}
-        {!isLoading && !isSubscribed ? (
-          <View style={[styles.gateCard, { backgroundColor: colors.card, borderRadius: colors.radius }]}>
-            <Feather name="lock" size={32} color={colors.primary} />
-            <Text style={[styles.gateTitle, { color: colors.foreground }]}>Dashboard locked</Text>
-            <Text style={[styles.gateText, { color: colors.mutedForeground }]}>
-              Subscribe to unlock your business dashboard, accept orders, assign dispatchers, and grow your laundry business.
-            </Text>
+          {/* Subscription pill */}
+          {!subLoading && (
             <Pressable
               onPress={() => setShowPaywall(true)}
-              style={[styles.gateBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
+              style={[styles.subPill, { backgroundColor: isSubscribed ? "#10b98122" : "rgba(255,255,255,0.15)" }]}
             >
-              <Feather name="zap" size={16} color={colors.primaryForeground} />
-              <Text style={[styles.gateBtnText, { color: colors.primaryForeground }]}>
-                Start 7-Day Free Trial
+              <View style={[styles.subDot, { backgroundColor: isSubscribed ? "#10b981" : "#f59e0b" }]} />
+              <Text style={styles.subPillText}>
+                {isSubscribed
+                  ? `${subscription.isTrial ? "Trial" : subscription.tier} · ${days}d left`
+                  : "No plan · Tap to subscribe"}
               </Text>
+              <Feather name="chevron-right" size={13} color="rgba(255,255,255,0.7)" />
             </Pressable>
+          )}
+        </View>
+
+        {/* Stats grid */}
+        {isSubscribed ? (
+          <View style={styles.statsGrid}>
+            {[
+              { label: "Revenue", value: `₦${revenue.toLocaleString()}`, icon: "trending-up" as const, color: "#059669" },
+              { label: "Active Orders", value: String(activeCount), icon: "package" as const, color: colors.accent },
+              { label: "Pending", value: String(pending), icon: "clock" as const, color: "#f59e0b" },
+              { label: "Completed", value: String(completed), icon: "check-circle" as const, color: "#10b981" },
+            ].map((stat) => (
+              <View
+                key={stat.label}
+                style={[styles.statCard, { backgroundColor: colors.card, borderRadius: colors.radius }, shadow]}
+              >
+                <View style={[styles.statIconWrap, { backgroundColor: stat.color + "14" }]}>
+                  <Feather name={stat.icon} size={16} color={stat.color} />
+                </View>
+                <Text style={[styles.statValue, { color: colors.foreground }]}>{stat.value}</Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{stat.label}</Text>
+              </View>
+            ))}
           </View>
         ) : (
-          <>
-            {/* Stats grid */}
-            <View style={styles.statsGrid}>
-              {stats.map((stat) => (
+          /* Paywall gate */
+          <View style={styles.padded}>
+            <Pressable
+              onPress={() => setShowPaywall(true)}
+              style={[styles.gateCard, { backgroundColor: colors.card, borderRadius: colors.radius }, shadow]}
+            >
+              <View style={[styles.gateIconWrap, { backgroundColor: colors.accent + "14" }]}>
+                <Feather name="zap" size={28} color={colors.accent} />
+              </View>
+              <Text style={[styles.gateTitle, { color: colors.foreground }]}>Activate your business</Text>
+              <Text style={[styles.gateText, { color: colors.mutedForeground }]}>
+                Start a 7-day free trial to accept orders, manage dispatchers, and grow your laundry business.
+              </Text>
+              <View style={[styles.gateBtn, { backgroundColor: colors.accent, borderRadius: colors.radius }]}>
+                <Feather name="zap" size={16} color="#ffffff" />
+                <Text style={styles.gateBtnText}>Start Free Trial</Text>
+              </View>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Recent active orders */}
+        {isSubscribed && recentOrders.length > 0 && (
+          <View style={styles.padded}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Active Orders</Text>
+            {recentOrders.map((order) => {
+              const statusColor = STATUS_COLOR[order.status] ?? colors.accent;
+              return (
                 <View
-                  key={stat.label}
-                  style={[styles.statCard, { backgroundColor: colors.card, borderRadius: colors.radius }]}
+                  key={order.id}
+                  style={[styles.orderRow, { backgroundColor: colors.card, borderRadius: colors.radius, borderLeftColor: statusColor }, shadow]}
                 >
-                  <Feather name={stat.icon} size={16} color={stat.color} />
-                  <Text style={[styles.statValue, { color: colors.foreground }]}>{stat.value}</Text>
-                  <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{stat.label}</Text>
+                  <View style={styles.orderRowLeft}>
+                    <Text style={[styles.orderNum, { color: colors.foreground }]}>#{order.orderNumber}</Text>
+                    <Text style={[styles.orderCustomer, { color: colors.mutedForeground }]}>{order.customerName}</Text>
+                  </View>
+                  <View style={styles.orderRowRight}>
+                    <Text style={[styles.orderAmt, { color: colors.accent }]}>₦{order.totalAmount.toLocaleString()}</Text>
+                    <View style={[styles.statusBubble, { backgroundColor: statusColor + "16" }]}>
+                      <Text style={[styles.statusText, { color: statusColor }]}>
+                        {order.status.replaceAll("_", " ")}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Quick links */}
+        {isSubscribed && (
+          <View style={styles.padded}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Quick Actions</Text>
+            <View style={[styles.quickCard, { backgroundColor: colors.card, borderRadius: colors.radius }, shadow]}>
+              {[
+                { icon: "clipboard" as const, label: "Manage Orders", sub: "Accept, update status, assign riders" },
+                { icon: "trending-up" as const, label: "Analytics", sub: "Revenue breakdown and service stats" },
+                { icon: "tag" as const, label: "Services & Pricing", sub: "Set your service menu and rates" },
+              ].map((item, i, arr) => (
+                <View
+                  key={item.label}
+                  style={[styles.quickRow, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                >
+                  <View style={[styles.quickIcon, { backgroundColor: colors.accent + "10" }]}>
+                    <Feather name={item.icon} size={18} color={colors.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.quickLabel, { color: colors.foreground }]}>{item.label}</Text>
+                    <Text style={[styles.quickSub, { color: colors.mutedForeground }]}>{item.sub}</Text>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                 </View>
               ))}
             </View>
-
-            {/* Activity hint */}
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Operations</Text>
-            <View style={[styles.activityCard, { backgroundColor: colors.card, borderRadius: colors.radius }]}>
-              <Feather name="inbox" size={28} color={colors.mutedForeground} />
-              <Text style={[styles.activityText, { color: colors.mutedForeground }]}>
-                {orders.length === 0
-                  ? "No orders yet. Customer orders will appear in the Orders tab."
-                  : "Open the Orders tab to accept, assign dispatchers, and update order status."}
-              </Text>
-            </View>
-          </>
+          </View>
         )}
       </ScrollView>
 
-      {/* Paywall modal */}
-      <Modal visible={showPaywall} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPaywall(false)}>
-        <View style={[styles.paywallSheet, { backgroundColor: colors.background }]}>
-          <View style={[styles.paywallHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.paywallHeaderTitle, { color: colors.foreground }]}>Subscription</Text>
-            <Pressable onPress={() => setShowPaywall(false)} style={styles.paywallClose}>
+      {/* Subscription modal */}
+      <Modal
+        visible={showPaywall}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPaywall(false)}
+      >
+        <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+          <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Subscription</Text>
+            <Pressable onPress={() => setShowPaywall(false)} hitSlop={12}>
               <Feather name="x" size={22} color={colors.mutedForeground} />
             </Pressable>
           </View>
@@ -140,32 +218,54 @@ export default function BusinessDashboard() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  subBanner: {
+  padded: { paddingHorizontal: 20, marginBottom: 8 },
+  hero: {
+    paddingHorizontal: 24,
+    paddingTop: 56,
+    paddingBottom: 32,
+    gap: 4,
+    marginBottom: 0,
+  },
+  heroGreet: { fontSize: 14, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.7)", marginBottom: 2 },
+  heroTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#ffffff" },
+  heroSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", marginBottom: 16 },
+  subPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderWidth: 1,
-    marginBottom: 20,
+    paddingVertical: 9,
+    borderRadius: 24,
+    alignSelf: "flex-start",
   },
-  subBannerText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  greeting: { fontSize: 14, fontFamily: "Inter_500Medium", marginBottom: 4 },
-  businessName: { fontSize: 24, fontFamily: "Inter_700Bold", marginBottom: 20 },
-  gateCard: { alignItems: "center", padding: 32, gap: 14 },
-  gateTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  gateText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  gateBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 24, paddingVertical: 14, marginTop: 4 },
-  gateBtnText: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 },
+  subDot: { width: 8, height: 8, borderRadius: 4 },
+  subPillText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.9)" },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 20 },
   statCard: { width: "47%", flexGrow: 1, padding: 16, gap: 8 },
+  statIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   statValue: { fontSize: 24, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  sectionTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", marginBottom: 12 },
-  activityCard: { alignItems: "center", padding: 32, gap: 12 },
-  activityText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
-  paywallSheet: { flex: 1 },
-  paywallHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, borderBottomWidth: 1 },
-  paywallHeaderTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  paywallClose: { padding: 4 },
+  gateCard: { padding: 28, alignItems: "center", gap: 12 },
+  gateIconWrap: { width: 60, height: 60, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  gateTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  gateText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  gateBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 28, paddingVertical: 14, marginTop: 4 },
+  gateBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#ffffff" },
+  sectionTitle: { fontSize: 17, fontFamily: "Inter_700Bold", marginBottom: 12, marginTop: 4 },
+  orderRow: { flexDirection: "row", alignItems: "center", padding: 14, marginBottom: 8, borderLeftWidth: 3, gap: 10 },
+  orderRowLeft: { flex: 1, gap: 3 },
+  orderNum: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  orderCustomer: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  orderRowRight: { alignItems: "flex-end", gap: 5 },
+  orderAmt: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  statusBubble: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  statusText: { fontSize: 10, fontFamily: "Inter_700Bold" },
+  quickCard: { overflow: "hidden" },
+  quickRow: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16 },
+  quickIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  quickLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  quickSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  sheet: { flex: 1 },
+  sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, borderBottomWidth: 1 },
+  sheetTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
 });

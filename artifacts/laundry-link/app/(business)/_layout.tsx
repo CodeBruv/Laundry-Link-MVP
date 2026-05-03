@@ -17,40 +17,48 @@ export default function BusinessLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: true,
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.primaryForeground,
-        headerTitleStyle: { fontFamily: "Inter_600SemiBold" },
+        headerStyle: {
+          backgroundColor: colors.card,
+          shadowColor: colors.shadowColor,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: colors.shadowOpacity,
+          shadowRadius: 4,
+          elevation: 2,
+        },
+        headerTintColor: colors.primary,
+        headerTitleStyle: { fontFamily: "Inter_700Bold", fontSize: 17, color: colors.foreground },
         tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 10 },
         tabBarStyle: {
           position: "absolute",
           backgroundColor: isIOS ? "transparent" : colors.card,
-          borderTopWidth: isWeb ? 1 : 0,
+          borderTopWidth: 1,
           borderTopColor: colors.border,
-          elevation: 0,
+          elevation: 8,
           ...(isWeb ? { height: 84 } : {}),
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
+              intensity={95}
+              tint={isDark ? "dark" : "extraLight"}
               style={StyleSheet.absoluteFill}
             />
-          ) : isWeb ? (
+          ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.card }]} />
-          ) : null,
+          ),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) =>
+          title: "Business Dashboard",
+          tabBarLabel: "Dashboard",
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="chart.bar" tintColor={color} size={22} />
+              <SymbolView name={focused ? "chart.bar.fill" : "chart.bar"} tintColor={color} size={22} />
             ) : (
               <Feather name="bar-chart-2" size={22} color={color} />
             ),
@@ -60,9 +68,9 @@ export default function BusinessLayout() {
         name="orders"
         options={{
           title: "Orders",
-          tabBarIcon: ({ color }) =>
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="list.bullet" tintColor={color} size={22} />
+              <SymbolView name={focused ? "list.bullet.rectangle.fill" : "list.bullet.rectangle"} tintColor={color} size={22} />
             ) : (
               <Feather name="clipboard" size={22} color={color} />
             ),
@@ -71,10 +79,10 @@ export default function BusinessLayout() {
       <Tabs.Screen
         name="reports"
         options={{
-          title: "Reports",
-          tabBarIcon: ({ color }) =>
+          title: "Analytics",
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="chart.line.uptrend.xyaxis" tintColor={color} size={22} />
+              <SymbolView name={focused ? "chart.line.uptrend.xyaxis.circle.fill" : "chart.line.uptrend.xyaxis"} tintColor={color} size={22} />
             ) : (
               <Feather name="trending-up" size={22} color={color} />
             ),
@@ -84,9 +92,9 @@ export default function BusinessLayout() {
         name="services"
         options={{
           title: "Services",
-          tabBarIcon: ({ color }) =>
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="tag" tintColor={color} size={22} />
+              <SymbolView name={focused ? "tag.fill" : "tag"} tintColor={color} size={22} />
             ) : (
               <Feather name="tag" size={22} color={color} />
             ),
@@ -95,10 +103,11 @@ export default function BusinessLayout() {
       <Tabs.Screen
         name="subscription"
         options={{
-          title: "Plan",
-          tabBarIcon: ({ color }) =>
+          title: "Subscription",
+          tabBarLabel: "Plan",
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="creditcard" tintColor={color} size={22} />
+              <SymbolView name={focused ? "creditcard.fill" : "creditcard"} tintColor={color} size={22} />
             ) : (
               <Feather name="credit-card" size={22} color={color} />
             ),
@@ -108,9 +117,9 @@ export default function BusinessLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color }) =>
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="person" tintColor={color} size={22} />
+              <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={22} />
             ) : (
               <Feather name="user" size={22} color={color} />
             ),
