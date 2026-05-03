@@ -27,8 +27,8 @@ import { useColors } from "@/hooks/useColors";
 
 const STATUS_COLOR: Record<string, string> = {
   PENDING: "#f59e0b",
-  ACCEPTED: "#2563eb",
-  PICKED_UP: "#2563eb",
+  ACCEPTED: "#1a7ff9",
+  PICKED_UP: "#1a7ff9",
   IN_PROGRESS: "#7c3aed",
   READY: "#059669",
   PAID: "#059669",
@@ -64,9 +64,9 @@ export default function CustomerHome() {
   const nearbyLaundromats = sortLaundromats(getLaundromatsForCity(city).filter((l) => l.isOpen), "distance").slice(0, 3);
 
   const shadow = {
-    shadowColor: colors.shadowColor,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: colors.shadowOpacity,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   };
@@ -84,32 +84,37 @@ export default function CustomerHome() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshOrders} tintColor={colors.accent} />}
       >
-        {/* Hero */}
-        <View style={[styles.hero, { backgroundColor: colors.primary }]}>
+        {/* ── Bright hero ────────────────────────────────────────── */}
+        <View style={[styles.hero, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          {/* Greeting row */}
           <View style={styles.heroTop}>
-            <View>
-              <Text style={styles.heroGreet}>Hello, {firstName} 👋</Text>
-              <Text style={styles.heroTitle}>Fresh laundry, delivered.</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.heroGreet, { color: colors.mutedForeground }]}>Hello, {firstName} 👋</Text>
+              <Text style={[styles.heroTitle, { color: colors.foreground }]}>Fresh laundry,{"\n"}delivered.</Text>
             </View>
-            <Pressable onPress={() => setShowCityPicker(true)} style={styles.cityBtn}>
-              <Feather name="map-pin" size={12} color="rgba(255,255,255,0.85)" />
-              <Text style={styles.cityBtnText}>{city}</Text>
-              <Feather name="chevron-down" size={12} color="rgba(255,255,255,0.7)" />
+            {/* City chip */}
+            <Pressable
+              onPress={() => setShowCityPicker(true)}
+              style={[styles.cityBtn, { backgroundColor: colors.accent + "12", borderColor: colors.accent + "30" }]}
+            >
+              <Feather name="map-pin" size={12} color={colors.accent} />
+              <Text style={[styles.cityBtnText, { color: colors.accent }]}>{city}</Text>
+              <Feather name="chevron-down" size={11} color={colors.accent} />
             </Pressable>
           </View>
 
-          {/* CTA inside hero */}
+          {/* Accent CTA */}
           <Pressable
             onPress={handleNewOrder}
-            style={[styles.heroCta, { backgroundColor: "rgba(255,255,255,0.12)", borderColor: "rgba(255,255,255,0.2)" }]}
+            style={[styles.heroCta, { backgroundColor: colors.accent, borderRadius: colors.radius }]}
           >
             <Feather name="plus-circle" size={18} color="#ffffff" />
             <Text style={styles.heroCtaText}>Place a new order</Text>
-            <Feather name="arrow-right" size={16} color="rgba(255,255,255,0.7)" style={{ marginLeft: "auto" }} />
+            <Feather name="arrow-right" size={16} color="rgba(255,255,255,0.8)" style={{ marginLeft: "auto" }} />
           </Pressable>
         </View>
 
-        {/* Active orders */}
+        {/* ── Active orders ──────────────────────────────────────── */}
         {activeOrders.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Active Orders</Text>
@@ -159,7 +164,7 @@ export default function CustomerHome() {
           </View>
         )}
 
-        {/* Nearby laundromats */}
+        {/* ── Nearby laundromats ─────────────────────────────────── */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Laundromats in {city}</Text>
@@ -182,7 +187,7 @@ export default function CustomerHome() {
                   onPress={handleNewOrder}
                   style={[styles.laundryCard, { backgroundColor: colors.card, borderRadius: colors.radius }, shadow]}
                 >
-                  <View style={[styles.laundryAvatar, { backgroundColor: colors.accent + "12" }]}>
+                  <View style={[styles.laundryAvatar, { backgroundColor: colors.accent + "14" }]}>
                     <Feather name="home" size={20} color={colors.accent} />
                   </View>
                   <View style={styles.laundryInfo}>
@@ -199,7 +204,7 @@ export default function CustomerHome() {
                       </Text>
                     </View>
                   </View>
-                  <View style={[styles.orderNowBtn, { backgroundColor: colors.accent + "12" }]}>
+                  <View style={[styles.orderNowBtn, { backgroundColor: colors.accent + "14" }]}>
                     <Feather name="arrow-right" size={15} color={colors.accent} />
                   </View>
                 </Pressable>
@@ -208,7 +213,7 @@ export default function CustomerHome() {
           )}
         </View>
 
-        {/* How it works */}
+        {/* ── How it works ───────────────────────────────────────── */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>How it works</Text>
           <View style={[styles.howCard, { backgroundColor: colors.card, borderRadius: colors.radius }, shadow]}>
@@ -231,7 +236,7 @@ export default function CustomerHome() {
         </View>
       </ScrollView>
 
-      {/* City picker modal */}
+      {/* ── City picker modal ──────────────────────────────────── */}
       <Modal
         visible={showCityPicker}
         animationType="slide"
@@ -268,23 +273,45 @@ export default function CustomerHome() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { gap: 0 },
+
+  /* Hero */
   hero: {
     paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 24,
+    paddingTop: 20,
+    paddingBottom: 20,
     gap: 16,
+    borderBottomWidth: 1,
   },
-  heroTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-  heroGreet: { fontSize: 14, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.7)", marginBottom: 4 },
-  heroTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#ffffff" },
-  cityBtn: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.12)", paddingHorizontal: 11, paddingVertical: 7, borderRadius: 20, marginTop: 4 },
-  cityBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.9)" },
-  heroCta: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, borderWidth: 1 },
+  heroTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  heroGreet: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 4 },
+  heroTitle: { fontSize: 24, fontFamily: "Inter_700Bold", lineHeight: 30 },
+  cityBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  cityBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  heroCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+  },
   heroCtaText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#ffffff" },
+
+  /* Sections */
   section: { paddingHorizontal: 20, paddingTop: 24, gap: 0 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   sectionTitle: { fontSize: 17, fontFamily: "Inter_700Bold", marginBottom: 12 },
   changeCity: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+
+  /* Order cards */
   orderCard: { padding: 14, marginBottom: 8, borderLeftWidth: 3, gap: 7 },
   orderTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   orderNum: { fontSize: 14, fontFamily: "Inter_700Bold" },
@@ -296,8 +323,10 @@ const styles = StyleSheet.create({
   orderAmt: { fontSize: 16, fontFamily: "Inter_700Bold" },
   payNowChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 12 },
   payNowText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#ffffff" },
-  seeAllRow: { flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 4, paddingBottom: 2 },
+  seeAllRow: { flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 4 },
   seeAll: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+
+  /* Laundromat cards */
   laundryCard: { flexDirection: "row", alignItems: "center", padding: 14, marginBottom: 10, gap: 12 },
   laundryAvatar: { width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   laundryInfo: { flex: 1, gap: 3 },
@@ -310,11 +339,15 @@ const styles = StyleSheet.create({
   orderNowBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   emptyCard: { padding: 24, alignItems: "center" },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
+
+  /* How it works */
   howCard: { padding: 4 },
   howRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   stepBadge: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   stepText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   howText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+
+  /* City modal */
   citySheet: { flex: 1 },
   citySheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, borderBottomWidth: 1 },
   citySheetTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },

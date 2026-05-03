@@ -21,8 +21,8 @@ import { daysLeft } from "@/lib/subscription";
 
 const STATUS_COLOR: Record<string, string> = {
   PENDING: "#f59e0b",
-  ACCEPTED: "#2563eb",
-  PICKED_UP: "#2563eb",
+  ACCEPTED: "#1a7ff9",
+  PICKED_UP: "#1a7ff9",
   IN_PROGRESS: "#7c3aed",
   READY: "#059669",
   PAID: "#059669",
@@ -56,9 +56,9 @@ export default function BusinessDashboard() {
     .slice(0, 3);
 
   const shadow = {
-    shadowColor: colors.shadowColor,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: colors.shadowOpacity,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   };
@@ -71,30 +71,45 @@ export default function BusinessDashboard() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshOrders} tintColor={colors.accent} />}
       >
-        {/* Hero header */}
-        <View style={[styles.hero, { backgroundColor: colors.primary }]}>
-          <Text style={styles.heroGreet}>Welcome back, {firstName} 👋</Text>
-          <Text style={styles.heroTitle}>{businessName}</Text>
-          <Text style={styles.heroSub}>Business Dashboard</Text>
+        {/* ── Bright hero ───────────────────────────────────────── */}
+        <View style={[styles.hero, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <View style={styles.heroRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.heroGreet, { color: colors.mutedForeground }]}>
+                Welcome back, {firstName} 👋
+              </Text>
+              <Text style={[styles.heroTitle, { color: colors.foreground }]}>{businessName}</Text>
+              <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>Business Dashboard</Text>
+            </View>
+            <View style={[styles.heroIcon, { backgroundColor: colors.primary + "10" }]}>
+              <Feather name="briefcase" size={22} color={colors.primary} />
+            </View>
+          </View>
 
           {/* Subscription pill */}
           {!subLoading && (
             <Pressable
               onPress={() => setShowPaywall(true)}
-              style={[styles.subPill, { backgroundColor: isSubscribed ? "#10b98122" : "rgba(255,255,255,0.15)" }]}
+              style={[
+                styles.subPill,
+                {
+                  backgroundColor: isSubscribed ? "#05966912" : colors.accent + "10",
+                  borderColor: isSubscribed ? "#05966930" : colors.accent + "30",
+                },
+              ]}
             >
-              <View style={[styles.subDot, { backgroundColor: isSubscribed ? "#10b981" : "#f59e0b" }]} />
-              <Text style={styles.subPillText}>
+              <View style={[styles.subDot, { backgroundColor: isSubscribed ? "#059669" : "#f59e0b" }]} />
+              <Text style={[styles.subPillText, { color: isSubscribed ? "#059669" : colors.accent }]}>
                 {isSubscribed
                   ? `${subscription.isTrial ? "Trial" : subscription.tier} · ${days}d left`
                   : "No plan · Tap to subscribe"}
               </Text>
-              <Feather name="chevron-right" size={13} color="rgba(255,255,255,0.7)" />
+              <Feather name="chevron-right" size={13} color={isSubscribed ? "#059669" : colors.accent} />
             </Pressable>
           )}
         </View>
 
-        {/* Stats grid */}
+        {/* ── Stats grid ────────────────────────────────────────── */}
         {isSubscribed ? (
           <View style={styles.statsGrid}>
             {[
@@ -122,7 +137,7 @@ export default function BusinessDashboard() {
               onPress={() => setShowPaywall(true)}
               style={[styles.gateCard, { backgroundColor: colors.card, borderRadius: colors.radius }, shadow]}
             >
-              <View style={[styles.gateIconWrap, { backgroundColor: colors.accent + "14" }]}>
+              <View style={[styles.gateIconWrap, { backgroundColor: colors.accent + "12" }]}>
                 <Feather name="zap" size={28} color={colors.accent} />
               </View>
               <Text style={[styles.gateTitle, { color: colors.foreground }]}>Activate your business</Text>
@@ -137,7 +152,7 @@ export default function BusinessDashboard() {
           </View>
         )}
 
-        {/* Recent active orders */}
+        {/* ── Recent active orders ──────────────────────────────── */}
         {isSubscribed && recentOrders.length > 0 && (
           <View style={styles.padded}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Active Orders</Text>
@@ -166,7 +181,7 @@ export default function BusinessDashboard() {
           </View>
         )}
 
-        {/* Quick links */}
+        {/* ── Quick actions ─────────────────────────────────────── */}
         {isSubscribed && (
           <View style={styles.padded}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Quick Actions</Text>
@@ -219,16 +234,20 @@ export default function BusinessDashboard() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   padded: { paddingHorizontal: 20, marginBottom: 8 },
+
+  /* Hero */
   hero: {
-    paddingHorizontal: 24,
-    paddingTop: 56,
-    paddingBottom: 32,
-    gap: 4,
-    marginBottom: 0,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    gap: 14,
+    borderBottomWidth: 1,
   },
-  heroGreet: { fontSize: 14, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.7)", marginBottom: 2 },
-  heroTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#ffffff" },
-  heroSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", marginBottom: 16 },
+  heroRow: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
+  heroGreet: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 3 },
+  heroTitle: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 2 },
+  heroSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  heroIcon: { width: 50, height: 50, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   subPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -237,20 +256,27 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 24,
     alignSelf: "flex-start",
+    borderWidth: 1,
   },
   subDot: { width: 8, height: 8, borderRadius: 4 },
-  subPillText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.9)" },
+  subPillText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+
+  /* Stats */
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 20 },
   statCard: { width: "47%", flexGrow: 1, padding: 16, gap: 8 },
   statIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   statValue: { fontSize: 24, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
+
+  /* Gate */
   gateCard: { padding: 28, alignItems: "center", gap: 12 },
   gateIconWrap: { width: 60, height: 60, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   gateTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   gateText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   gateBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 28, paddingVertical: 14, marginTop: 4 },
   gateBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#ffffff" },
+
+  /* Orders */
   sectionTitle: { fontSize: 17, fontFamily: "Inter_700Bold", marginBottom: 12, marginTop: 4 },
   orderRow: { flexDirection: "row", alignItems: "center", padding: 14, marginBottom: 8, borderLeftWidth: 3, gap: 10 },
   orderRowLeft: { flex: 1, gap: 3 },
@@ -260,11 +286,15 @@ const styles = StyleSheet.create({
   orderAmt: { fontSize: 15, fontFamily: "Inter_700Bold" },
   statusBubble: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   statusText: { fontSize: 10, fontFamily: "Inter_700Bold" },
+
+  /* Quick actions */
   quickCard: { overflow: "hidden" },
   quickRow: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16 },
   quickIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   quickLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   quickSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+
+  /* Modal */
   sheet: { flex: 1 },
   sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, borderBottomWidth: 1 },
   sheetTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },

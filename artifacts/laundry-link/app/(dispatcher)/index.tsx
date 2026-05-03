@@ -20,12 +20,12 @@ export default function DispatcherDashboard() {
   const awaitingPayment = assigned.filter((o) => o.status === "READY").length;
   const inDelivery = assigned.filter((o) => o.status === "OUT_FOR_DELIVERY").length;
 
-  const totalEarningsProxy = completed * 1500; // placeholder until real rider fee tracking
+  const totalEarningsProxy = completed * 1500;
 
   const shadow = {
-    shadowColor: colors.shadowColor,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: colors.shadowOpacity,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   };
@@ -37,17 +37,25 @@ export default function DispatcherDashboard() {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshOrders} tintColor={colors.accent} />}
     >
-      {/* Hero */}
-      <View style={[styles.hero, { backgroundColor: colors.primary }]}>
-        <Text style={styles.heroGreet}>Hello, {name} 👋</Text>
-        <Text style={styles.heroTitle}>Dispatcher Hub</Text>
-        <View style={styles.statusRow}>
+      {/* ── Bright hero ──────────────────────────────────────────── */}
+      <View style={[styles.hero, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <View style={styles.heroRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.heroGreet, { color: colors.mutedForeground }]}>Hello, {name} 👋</Text>
+            <Text style={[styles.heroTitle, { color: colors.foreground }]}>Dispatcher Hub</Text>
+          </View>
+          <View style={[styles.heroIcon, { backgroundColor: colors.accent + "12" }]}>
+            <Feather name="truck" size={22} color={colors.accent} />
+          </View>
+        </View>
+        {/* Online status badge */}
+        <View style={[styles.statusBadge, { backgroundColor: "#05966912", borderColor: "#05966930" }]}>
           <View style={styles.statusDot} />
-          <Text style={styles.statusText}>Available for delivery</Text>
+          <Text style={[styles.statusText, { color: "#059669" }]}>Available for delivery</Text>
         </View>
       </View>
 
-      {/* Stats grid */}
+      {/* ── Stats grid ───────────────────────────────────────────── */}
       <View style={styles.statsGrid}>
         {[
           { label: "Assigned", value: String(assigned.length), icon: "package" as const, color: colors.accent },
@@ -65,21 +73,21 @@ export default function DispatcherDashboard() {
         ))}
       </View>
 
-      {/* Earnings card */}
+      {/* ── Earnings card ────────────────────────────────────────── */}
       <View style={styles.padded}>
-        <View style={[styles.earningsCard, { backgroundColor: colors.card, borderRadius: colors.radius }, shadow]}>
+        <View style={[styles.earningsCard, { backgroundColor: colors.primary, borderRadius: colors.radius }]}>
           <View style={styles.earningsLeft}>
-            <Text style={[styles.earningsLabel, { color: colors.mutedForeground }]}>Estimated Earnings</Text>
-            <Text style={[styles.earningsValue, { color: colors.foreground }]}>₦{totalEarningsProxy.toLocaleString()}</Text>
-            <Text style={[styles.earningsSub, { color: colors.mutedForeground }]}>Paid directly by customers/laundromats</Text>
+            <Text style={styles.earningsLabelW}>Estimated Earnings</Text>
+            <Text style={styles.earningsValueW}>₦{totalEarningsProxy.toLocaleString()}</Text>
+            <Text style={styles.earningsSubW}>Paid directly by customers/laundromats</Text>
           </View>
-          <View style={[styles.earningsIcon, { backgroundColor: "#05966910" }]}>
-            <Feather name="dollar-sign" size={24} color="#059669" />
+          <View style={[styles.earningsIcon, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
+            <Feather name="dollar-sign" size={24} color="#ffffff" />
           </View>
         </View>
       </View>
 
-      {/* Payment gate explainer */}
+      {/* ── Payment gate notice ───────────────────────────────────── */}
       <View style={styles.padded}>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderRadius: colors.radius, borderLeftColor: colors.accent }, shadow]}>
           <Feather name="info" size={15} color={colors.accent} />
@@ -92,7 +100,7 @@ export default function DispatcherDashboard() {
         </View>
       </View>
 
-      {/* Active deliveries */}
+      {/* ── Active deliveries ─────────────────────────────────────── */}
       <View style={styles.padded}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
           {assigned.length === 0 ? "No deliveries yet" : `Active (${assigned.filter((o) => o.status !== "DELIVERED").length})`}
@@ -136,13 +144,11 @@ export default function DispatcherDashboard() {
             })
         )}
         {assigned.filter((o) => o.status !== "DELIVERED").length > 3 && (
-          <Text style={[styles.seeMore, { color: colors.accent }]}>
-            See all in Deliveries tab
-          </Text>
+          <Text style={[styles.seeMore, { color: colors.accent }]}>See all in Deliveries tab</Text>
         )}
       </View>
 
-      {/* Checklist */}
+      {/* ── Getting started checklist ─────────────────────────────── */}
       <View style={styles.padded}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Getting started</Text>
         <View style={[styles.checkCard, { backgroundColor: colors.card, borderRadius: colors.radius }, shadow]}>
@@ -169,36 +175,60 @@ export default function DispatcherDashboard() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   padded: { paddingHorizontal: 20, marginBottom: 12 },
+
+  /* Hero */
   hero: {
-    paddingHorizontal: 24,
-    paddingTop: 56,
-    paddingBottom: 28,
-    gap: 4,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    gap: 14,
+    borderBottomWidth: 1,
   },
-  heroGreet: { fontSize: 14, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.7)" },
-  heroTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#ffffff", marginBottom: 10 },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "rgba(255,255,255,0.12)", alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#10b981" },
-  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.9)" },
+  heroRow: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
+  heroGreet: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 3 },
+  heroTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  heroIcon: { width: 50, height: 50, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#059669" },
+  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+
+  /* Stats */
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 20 },
   statCard: { width: "47%", flexGrow: 1, padding: 14, gap: 6 },
   statIcon: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   statValue: { fontSize: 22, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
+
+  /* Earnings — uses primary navy as a striking accent card */
   earningsCard: { flexDirection: "row", alignItems: "center", padding: 20, gap: 16 },
   earningsLeft: { flex: 1, gap: 4 },
-  earningsLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  earningsValue: { fontSize: 28, fontFamily: "Inter_700Bold" },
-  earningsSub: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  earningsLabelW: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.7)" },
+  earningsValueW: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#ffffff" },
+  earningsSubW: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", lineHeight: 16 },
   earningsIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+
+  /* Info card */
   infoCard: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 14, borderLeftWidth: 3 },
   infoTitle: { fontSize: 13, fontFamily: "Inter_700Bold", marginBottom: 3 },
   infoBody: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+
+  /* Section */
   sectionTitle: { fontSize: 17, fontFamily: "Inter_700Bold", marginBottom: 12 },
   emptyCard: { alignItems: "center", padding: 28, gap: 12 },
   emptyIcon: { width: 58, height: 58, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
+
+  /* Delivery rows */
   deliveryRow: { flexDirection: "row", alignItems: "center", padding: 14, marginBottom: 8, borderLeftWidth: 3, gap: 10 },
   deliveryNum: { fontSize: 14, fontFamily: "Inter_700Bold" },
   deliveryAddr: { fontSize: 12, fontFamily: "Inter_400Regular" },
@@ -207,6 +237,8 @@ const styles = StyleSheet.create({
   statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   statusChipText: { fontSize: 10, fontFamily: "Inter_700Bold" },
   seeMore: { fontSize: 13, fontFamily: "Inter_600SemiBold", textAlign: "center", paddingVertical: 8 },
+
+  /* Checklist */
   checkCard: { overflow: "hidden" },
   checkRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   checkDot: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
