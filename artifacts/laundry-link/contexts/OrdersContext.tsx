@@ -10,7 +10,14 @@ import React, {
 
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { sendLocalNotification } from "@/lib/notifications";
+import {
+  notifyNewOrder,
+  notifyStatusChange,
+  notifyDispatcherAssigned,
+  notifyPaymentReceived,
+  notifyOrderReady,
+  sendLocalNotification,
+} from "@/lib/notifications";
 import { DEFAULT_BUSINESS_ID, DEFAULT_BUSINESS_NAME } from "@/constants/services";
 import {
   CreateOrderInput,
@@ -124,18 +131,6 @@ function filterOrdersForRole(allOrders: Order[], role: UserRole | null, userId?:
   if (role === "DISPATCHER") return allOrders.filter((o) => !!o.assignedDriverName);
   return allOrders;
 }
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  PENDING: "Pending",
-  ACCEPTED: "Accepted",
-  PICKED_UP: "Picked Up",
-  IN_PROGRESS: "In Progress",
-  READY: "Ready for Delivery",
-  PAID: "Payment Received",
-  OUT_FOR_DELIVERY: "Out for Delivery",
-  DELIVERED: "Delivered",
-  CANCELLED: "Cancelled",
-};
 
 export function OrdersProvider({ children }: { children: React.ReactNode }) {
   const { user, role, isDemo } = useAuth();
@@ -259,7 +254,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
             note: "Order placed by customer",
           });
           await refreshOrders();
-          sendLocalNotification("Order Placed!", `Order #${created.orderNumber} placed successfully.`);
+          notifyNewOrder(created.orderNumber, created.businessName);
           return { error: null, orderId: created.id };
         }
       }
@@ -270,7 +265,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       await writeLocalOrders([order, ...local]);
       await writeLocalHistory([...localH, firstHistory]);
       await refreshOrders();
-      sendLocalNotification("Order Placed!", `Your order #${order.orderNumber} has been placed.`);
+      notifyNewOrder(order.orderNumber, order.businessName);
       return { error: null, orderId: order.id };
     },
     [user, isDemo, refreshOrders],
@@ -280,12 +275,17 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     async (orderId: string, status: OrderStatus, note?: string) => {
       if (!user) return { error: "You must be signed in." };
       const now = new Date().toISOString();
+
+      // Find the order to get metadata for the notification
+      const targetOrder = orders.find((o) => o.id === orderId);
+      const orderNumber = targetOrder?.orderNumber ?? orderId;
+
       const nextHistory: OrderStatusHistory = {
         id: makeId(),
         orderId,
         status,
         changedBy: user.id,
-        note: note ?? `Status updated to ${STATUS_LABELS[status]}`,
+        note: note ?? `Status updated to ${status.replaceAll("_", " ")}`,
         createdAt: now,
       };
 
@@ -299,7 +299,11 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
             note: nextHistory.note,
           });
           await refreshOrders();
-          sendLocalNotification("Order Updated", `Order is now: ${STATUS_LABELS[status]}`);
+          if (status === "READY") {
+            notifyOrderReady(orderNumber);
+          } else {
+            notifyStatusChange(orderNumber, status, role ?? "CUSTOMER");
+          }
           return { error: null };
         }
       }
@@ -310,16 +314,24 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       await writeLocalOrders(updated);
       await writeLocalHistory([...localH, nextHistory]);
       await refreshOrders();
-      sendLocalNotification("Order Updated", `Order is now: ${STATUS_LABELS[status]}`);
+      if (status === "READY") {
+        notifyOrderReady(orderNumber);
+      } else {
+        notifyStatusChange(orderNumber, status, role ?? "CUSTOMER");
+      }
       return { error: null };
     },
-    [user, isDemo, refreshOrders],
+    [user, isDemo, refreshOrders, orders, role],
   );
 
   const markOrderPaid = useCallback(
     async (orderId: string, reference: string) => {
       if (!user) return { error: "You must be signed in." };
       const now = new Date().toISOString();
+      const targetOrder = orders.find((o) => o.id === orderId);
+      const orderNumber = targetOrder?.orderNumber ?? orderId;
+      const amount = targetOrder?.totalAmount ?? 0;
+
       const historyEntry: OrderStatusHistory = {
         id: makeId(),
         orderId,
@@ -342,7 +354,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
             note: historyEntry.note,
           });
           await refreshOrders();
-          sendLocalNotification("Payment Received!", "Your payment was successful. The laundromat has been notified.");
+          notifyPaymentReceived(orderNumber, amount, reference);
           return { error: null };
         }
       }
@@ -357,15 +369,17 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       await writeLocalOrders(updated);
       await writeLocalHistory([...localH, historyEntry]);
       await refreshOrders();
-      sendLocalNotification("Payment Received!", "Your payment was successful.");
+      notifyPaymentReceived(orderNumber, amount, reference);
       return { error: null };
     },
-    [user, isDemo, refreshOrders],
+    [user, isDemo, refreshOrders, orders],
   );
 
   const assignDispatcher = useCallback(
     async (orderId: string, dispatcherId: string, dispatcherName: string) => {
       if (!user) return { error: "You must be signed in." };
+      const targetOrder = orders.find((o) => o.id === orderId);
+      const orderNumber = targetOrder?.orderNumber ?? orderId;
 
       if (isSupabaseConfigured && !isDemo) {
         const { error } = await supabase
@@ -374,7 +388,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           .eq("id", orderId);
         if (!error) {
           await refreshOrders();
-          sendLocalNotification("Dispatcher Assigned", `${dispatcherName} has been assigned.`);
+          notifyDispatcherAssigned(orderNumber, dispatcherName);
           return { error: null };
         }
       }
@@ -388,7 +402,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       );
       await writeLocalOrders(updated);
       await refreshOrders();
-      sendLocalNotification("Dispatcher Assigned", `${dispatcherName} has been assigned.`);
+      notifyDispatcherAssigned(orderNumber, dispatcherName);
       return { error: null };
     },
     [user, isDemo, refreshOrders, orders],
@@ -416,8 +430,14 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     [isDemo, refreshOrders],
   );
 
-  const getOrderById = useCallback((orderId: string) => orders.find((o) => o.id === orderId), [orders]);
-  const getHistoryForOrder = useCallback((orderId: string) => history.filter((h) => h.orderId === orderId), [history]);
+  const getOrderById = useCallback(
+    (orderId: string) => orders.find((o) => o.id === orderId),
+    [orders],
+  );
+  const getHistoryForOrder = useCallback(
+    (orderId: string) => history.filter((h) => h.orderId === orderId),
+    [history],
+  );
 
   const value = useMemo(
     () => ({
