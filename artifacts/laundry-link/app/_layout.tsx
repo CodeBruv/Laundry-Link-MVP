@@ -18,6 +18,7 @@ import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrdersProvider } from "@/contexts/OrdersContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { registerForPushNotificationsAsync } from "@/lib/notifications";
 
 SplashScreen.preventAutoHideAsync();
@@ -49,7 +50,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
-      // Request push notification permission early (non-blocking)
       registerForPushNotificationsAsync().catch(() => {});
     }
   }, [fontsLoaded, fontError]);
@@ -60,15 +60,17 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={styles.appShell}>
+          <GestureHandlerRootView style={styles.shell}>
             <KeyboardProvider>
               <AuthProvider>
-                <OrdersProvider>
-                  <View style={styles.appShell}>
-                    <DemoModeBanner />
-                    <RootLayoutNav />
-                  </View>
-                </OrdersProvider>
+                <SubscriptionProvider>
+                  <OrdersProvider>
+                    <View style={styles.shell}>
+                      <DemoModeBanner />
+                      <RootLayoutNav />
+                    </View>
+                  </OrdersProvider>
+                </SubscriptionProvider>
               </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
@@ -79,7 +81,5 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  appShell: {
-    flex: 1,
-  },
+  shell: { flex: 1 },
 });

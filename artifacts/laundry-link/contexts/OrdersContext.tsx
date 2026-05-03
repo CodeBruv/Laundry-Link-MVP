@@ -20,8 +20,8 @@ import {
   UserRole,
 } from "@/types";
 
-const STORAGE_KEY = "laundry_link_orders_v3";
-const HISTORY_KEY = "laundry_link_order_history_v3";
+const STORAGE_KEY = "laundry_link_orders_v4";
+const HISTORY_KEY = "laundry_link_order_history_v4";
 const DELIVERY_FEE = 1500;
 
 interface OrdersContextType {
@@ -33,6 +33,7 @@ interface OrdersContextType {
   updateOrderStatus: (orderId: string, status: OrderStatus, note?: string) => Promise<{ error: string | null }>;
   assignDispatcher: (orderId: string, dispatcherId: string, dispatcherName: string) => Promise<{ error: string | null }>;
   updateDriverLocation: (orderId: string, lat: number, lng: number, sharing: boolean) => Promise<void>;
+  markOrderPaid: (orderId: string, reference: string) => Promise<{ error: string | null }>;
   getOrderById: (orderId: string) => Order | undefined;
   getHistoryForOrder: (orderId: string) => OrderStatusHistory[];
 }
@@ -46,6 +47,7 @@ const OrdersContext = createContext<OrdersContextType>({
   updateOrderStatus: async () => ({ error: null }),
   assignDispatcher: async () => ({ error: null }),
   updateDriverLocation: async () => {},
+  markOrderPaid: async () => ({ error: null }),
   getOrderById: () => undefined,
   getHistoryForOrder: () => [],
 });
@@ -80,6 +82,8 @@ function mapOrder(row: any): Order {
     driverLatitude: row.driver_lat ?? row.driverLatitude,
     driverLongitude: row.driver_lng ?? row.driverLongitude,
     isDriverLocationShared: Boolean(row.is_driver_location_shared ?? row.isDriverLocationShared),
+    paystackRef: row.paystack_ref ?? row.paystackRef,
+    paidAt: row.paid_at ?? row.paidAt,
     createdAt: row.created_at ?? row.createdAt,
     updatedAt: row.updated_at ?? row.updatedAt,
   };
@@ -127,6 +131,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   PICKED_UP: "Picked Up",
   IN_PROGRESS: "In Progress",
   READY: "Ready for Delivery",
+  PAID: "Payment Received",
   OUT_FOR_DELIVERY: "Out for Delivery",
   DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
@@ -139,11 +144,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const refreshOrders = useCallback(async () => {
-    if (!user) {
-      setOrders([]);
-      setHistory([]);
-      return;
-    }
+    if (!user) { setOrders([]); setHistory([]); return; }
     setIsLoading(true);
     try {
       if (isSupabaseConfigured && !isDemo) {
@@ -171,7 +172,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       }
-      // local fallback
+      // Local fallback
       const local = await readLocalOrders();
       const localH = await readLocalHistory();
       setOrders(filterOrdersForRole(local, role, user.id));
@@ -181,18 +182,14 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, role, isDemo]);
 
-  useEffect(() => {
-    refreshOrders();
-  }, [refreshOrders]);
+  useEffect(() => { refreshOrders(); }, [refreshOrders]);
 
   // Supabase realtime
   useEffect(() => {
     if (!isSupabaseConfigured || isDemo || !user) return;
     const channel = supabase
       .channel("orders-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
-        refreshOrders();
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { refreshOrders(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, isDemo, refreshOrders]);
@@ -255,15 +252,6 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
 
         if (!error && data) {
           const created = mapOrder(data);
-          await supabase.from("order_items").insert(
-            created.items.map((item) => ({
-              order_id: created.id,
-              service_name: item.serviceName,
-              quantity: item.quantity,
-              price_per_unit: item.pricePerUnit,
-              total: item.total,
-            })),
-          );
           await supabase.from("order_status_history").insert({
             order_id: created.id,
             status: "PENDING",
@@ -271,18 +259,18 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
             note: "Order placed by customer",
           });
           await refreshOrders();
-          sendLocalNotification("New Order Received!", `Order #${created.orderNumber} is waiting for acceptance.`);
+          sendLocalNotification("Order Placed!", `Order #${created.orderNumber} placed successfully.`);
           return { error: null, orderId: created.id };
         }
       }
 
-      // local fallback
+      // Local fallback
       const local = await readLocalOrders();
       const localH = await readLocalHistory();
       await writeLocalOrders([order, ...local]);
       await writeLocalHistory([...localH, firstHistory]);
       await refreshOrders();
-      sendLocalNotification("Order Placed!", `Your order #${order.orderNumber} has been placed successfully.`);
+      sendLocalNotification("Order Placed!", `Your order #${order.orderNumber} has been placed.`);
       return { error: null, orderId: order.id };
     },
     [user, isDemo, refreshOrders],
@@ -311,20 +299,65 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
             note: nextHistory.note,
           });
           await refreshOrders();
-          sendLocalNotification("Order Updated", `Your order is now: ${STATUS_LABELS[status]}`);
+          sendLocalNotification("Order Updated", `Order is now: ${STATUS_LABELS[status]}`);
+          return { error: null };
+        }
+      }
+
+      const local = await readLocalOrders();
+      const updated = local.map((o) => o.id === orderId ? { ...o, status, updatedAt: now } : o);
+      const localH = await readLocalHistory();
+      await writeLocalOrders(updated);
+      await writeLocalHistory([...localH, nextHistory]);
+      await refreshOrders();
+      sendLocalNotification("Order Updated", `Order is now: ${STATUS_LABELS[status]}`);
+      return { error: null };
+    },
+    [user, isDemo, refreshOrders],
+  );
+
+  const markOrderPaid = useCallback(
+    async (orderId: string, reference: string) => {
+      if (!user) return { error: "You must be signed in." };
+      const now = new Date().toISOString();
+      const historyEntry: OrderStatusHistory = {
+        id: makeId(),
+        orderId,
+        status: "PAID",
+        changedBy: user.id,
+        note: `Payment confirmed — ref: ${reference}`,
+        createdAt: now,
+      };
+
+      if (isSupabaseConfigured && !isDemo) {
+        const { error } = await supabase
+          .from("orders")
+          .update({ status: "PAID", paystack_ref: reference, paid_at: now })
+          .eq("id", orderId);
+        if (!error) {
+          await supabase.from("order_status_history").insert({
+            order_id: orderId,
+            status: "PAID",
+            changed_by: user.id,
+            note: historyEntry.note,
+          });
+          await refreshOrders();
+          sendLocalNotification("Payment Received!", "Your payment was successful. The laundromat has been notified.");
           return { error: null };
         }
       }
 
       const local = await readLocalOrders();
       const updated = local.map((o) =>
-        o.id === orderId ? { ...o, status, updatedAt: now } : o,
+        o.id === orderId
+          ? { ...o, status: "PAID" as OrderStatus, paystackRef: reference, paidAt: now, updatedAt: now }
+          : o,
       );
       const localH = await readLocalHistory();
       await writeLocalOrders(updated);
-      await writeLocalHistory([...localH, nextHistory]);
+      await writeLocalHistory([...localH, historyEntry]);
       await refreshOrders();
-      sendLocalNotification("Order Updated", `Your order is now: ${STATUS_LABELS[status]}`);
+      sendLocalNotification("Payment Received!", "Your payment was successful.");
       return { error: null };
     },
     [user, isDemo, refreshOrders],
@@ -341,7 +374,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           .eq("id", orderId);
         if (!error) {
           await refreshOrders();
-          sendLocalNotification("Dispatcher Assigned", `${dispatcherName} has been assigned to this order.`);
+          sendLocalNotification("Dispatcher Assigned", `${dispatcherName} has been assigned.`);
           return { error: null };
         }
       }
@@ -355,7 +388,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       );
       await writeLocalOrders(updated);
       await refreshOrders();
-      sendLocalNotification("Dispatcher Assigned", `${dispatcherName} has been assigned to this order.`);
+      sendLocalNotification("Dispatcher Assigned", `${dispatcherName} has been assigned.`);
       return { error: null };
     },
     [user, isDemo, refreshOrders, orders],
@@ -383,30 +416,16 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     [isDemo, refreshOrders],
   );
 
-  const getOrderById = useCallback(
-    (orderId: string) => orders.find((o) => o.id === orderId),
-    [orders],
-  );
-
-  const getHistoryForOrder = useCallback(
-    (orderId: string) => history.filter((h) => h.orderId === orderId),
-    [history],
-  );
+  const getOrderById = useCallback((orderId: string) => orders.find((o) => o.id === orderId), [orders]);
+  const getHistoryForOrder = useCallback((orderId: string) => history.filter((h) => h.orderId === orderId), [history]);
 
   const value = useMemo(
     () => ({
-      orders,
-      history,
-      isLoading,
-      refreshOrders,
-      createOrder,
-      updateOrderStatus,
-      assignDispatcher,
-      updateDriverLocation,
-      getOrderById,
-      getHistoryForOrder,
+      orders, history, isLoading, refreshOrders, createOrder, updateOrderStatus,
+      assignDispatcher, updateDriverLocation, markOrderPaid, getOrderById, getHistoryForOrder,
     }),
-    [orders, history, isLoading, refreshOrders, createOrder, updateOrderStatus, assignDispatcher, updateDriverLocation, getOrderById, getHistoryForOrder],
+    [orders, history, isLoading, refreshOrders, createOrder, updateOrderStatus,
+      assignDispatcher, updateDriverLocation, markOrderPaid, getOrderById, getHistoryForOrder],
   );
 
   return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>;

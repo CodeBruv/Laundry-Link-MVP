@@ -4,9 +4,8 @@ import { StyleSheet, View } from "react-native";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { useColors } from "@/hooks/useColors";
 
-export default function BusinessSubscription() {
+export default function BusinessSubscriptionScreen() {
   const colors = useColors();
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SubscriptionPaywall />
@@ -15,7 +14,5 @@ export default function BusinessSubscription() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
 });

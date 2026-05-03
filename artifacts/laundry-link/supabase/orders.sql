@@ -1,4 +1,4 @@
--- Day 2+3 schema — run once in the Supabase SQL editor
+-- Day 4 schema — run idempotently in Supabase SQL editor
 
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
@@ -16,22 +16,34 @@ create table if not exists public.orders (
   total_amount numeric(12, 2) not null default 0,
   delivery_fee numeric(12, 2) not null default 1500,
   status text not null default 'PENDING' check (status in (
-    'PENDING','ACCEPTED','PICKED_UP','IN_PROGRESS','READY','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'
+    'PENDING','ACCEPTED','PICKED_UP','IN_PROGRESS','READY',
+    'PAID','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'
   )),
   special_requests text,
   urgent boolean not null default false,
   driver_lat double precision,
   driver_lng double precision,
   is_driver_location_shared boolean not null default false,
+  paystack_ref text,
+  paid_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
--- Safe column additions for existing tables (idempotent)
+-- Idempotent column additions
 alter table public.orders add column if not exists delivery_fee numeric(12,2) not null default 1500;
 alter table public.orders add column if not exists driver_lat double precision;
 alter table public.orders add column if not exists driver_lng double precision;
 alter table public.orders add column if not exists is_driver_location_shared boolean not null default false;
+alter table public.orders add column if not exists paystack_ref text;
+alter table public.orders add column if not exists paid_at timestamptz;
+
+-- Update status check constraint (drop and recreate to add PAID)
+alter table public.orders drop constraint if exists orders_status_check;
+alter table public.orders add constraint orders_status_check check (status in (
+  'PENDING','ACCEPTED','PICKED_UP','IN_PROGRESS','READY',
+  'PAID','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'
+));
 
 create table if not exists public.order_items (
   id uuid primary key default gen_random_uuid(),
@@ -69,7 +81,7 @@ alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 alter table public.order_status_history enable row level security;
 
--- Customer policies
+-- Customer: own orders
 drop policy if exists orders_select_customer on public.orders;
 create policy orders_select_customer on public.orders
 for select using (customer_id = auth.uid());
@@ -78,7 +90,12 @@ drop policy if exists orders_insert_customer on public.orders;
 create policy orders_insert_customer on public.orders
 for insert with check (customer_id = auth.uid());
 
--- Business policies
+-- Customer can update own orders (for PAID status)
+drop policy if exists orders_update_customer on public.orders;
+create policy orders_update_customer on public.orders
+for update using (customer_id = auth.uid());
+
+-- Business: all orders for their business
 drop policy if exists orders_select_business on public.orders;
 create policy orders_select_business on public.orders
 for select using (
@@ -93,7 +110,7 @@ for update using (
   and business_id = coalesce(auth.jwt() -> 'user_metadata' ->> 'business_id', 'cleanpro-abuja')
 );
 
--- Dispatcher policies
+-- Dispatcher: assigned orders
 drop policy if exists orders_select_dispatcher on public.orders;
 create policy orders_select_dispatcher on public.orders
 for select using (
@@ -108,7 +125,7 @@ for update using (
   and assigned_driver_id = auth.uid()
 );
 
--- Order items policies
+-- Order items
 drop policy if exists order_items_select_related on public.order_items;
 create policy order_items_select_related on public.order_items
 for select using (
@@ -117,8 +134,10 @@ for select using (
     where o.id = order_items.order_id
     and (
       o.customer_id = auth.uid()
-      or (auth.jwt() -> 'user_metadata' ->> 'role' = 'BUSINESS' and o.business_id = coalesce(auth.jwt() -> 'user_metadata' ->> 'business_id', 'cleanpro-abuja'))
-      or (auth.jwt() -> 'user_metadata' ->> 'role' = 'DISPATCHER' and o.assigned_driver_id is not null)
+      or (auth.jwt() -> 'user_metadata' ->> 'role' = 'BUSINESS'
+          and o.business_id = coalesce(auth.jwt() -> 'user_metadata' ->> 'business_id', 'cleanpro-abuja'))
+      or (auth.jwt() -> 'user_metadata' ->> 'role' = 'DISPATCHER'
+          and o.assigned_driver_id is not null)
     )
   )
 );
@@ -129,7 +148,7 @@ for insert with check (
   exists (select 1 from public.orders o where o.id = order_items.order_id and o.customer_id = auth.uid())
 );
 
--- Status history policies
+-- Status history
 drop policy if exists history_select_related on public.order_status_history;
 create policy history_select_related on public.order_status_history
 for select using (
@@ -138,8 +157,10 @@ for select using (
     where o.id = order_status_history.order_id
     and (
       o.customer_id = auth.uid()
-      or (auth.jwt() -> 'user_metadata' ->> 'role' = 'BUSINESS' and o.business_id = coalesce(auth.jwt() -> 'user_metadata' ->> 'business_id', 'cleanpro-abuja'))
-      or (auth.jwt() -> 'user_metadata' ->> 'role' = 'DISPATCHER' and o.assigned_driver_id is not null)
+      or (auth.jwt() -> 'user_metadata' ->> 'role' = 'BUSINESS'
+          and o.business_id = coalesce(auth.jwt() -> 'user_metadata' ->> 'business_id', 'cleanpro-abuja'))
+      or (auth.jwt() -> 'user_metadata' ->> 'role' = 'DISPATCHER'
+          and o.assigned_driver_id is not null)
     )
   )
 );

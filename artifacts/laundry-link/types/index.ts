@@ -16,6 +16,7 @@ export type OrderStatus =
   | "PICKED_UP"
   | "IN_PROGRESS"
   | "READY"
+  | "PAID"
   | "OUT_FOR_DELIVERY"
   | "DELIVERED"
   | "CANCELLED";
@@ -41,6 +42,8 @@ export interface Order {
   driverLatitude?: number;
   driverLongitude?: number;
   isDriverLocationShared?: boolean;
+  paystackRef?: string;
+  paidAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -81,9 +84,20 @@ export type SubscriptionTier = "STARTER" | "PRO" | "ENTERPRISE";
 export interface SubscriptionPlan {
   id: SubscriptionTier;
   name: string;
-  price: number;
+  monthlyPrice: number;
   features: string[];
   recommended?: boolean;
+  maxOrders: number;
+  maxDispatchers: number;
+}
+
+export interface SubscriptionState {
+  tier: SubscriptionTier | null;
+  active: boolean;
+  isTrial: boolean;
+  trialExpiresAt: string | null;
+  subscribedAt: string | null;
+  expiresAt: string | null;
 }
 
 export interface OrderStatusHistory {
