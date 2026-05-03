@@ -16,26 +16,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { UserRole } from "@/types";
-
-const DEMO_ROLES: { role: UserRole; label: string; icon: keyof typeof Feather.glyphMap; color: string }[] = [
-  { role: "CUSTOMER",   label: "Customer",   icon: "user",          color: "#3b82f6" },
-  { role: "BUSINESS",   label: "Business",   icon: "home",          color: "#8b5cf6" },
-  { role: "DISPATCHER", label: "Dispatcher", icon: "truck",         color: "#f97316" },
-  { role: "ADMIN",      label: "Admin",      icon: "shield",        color: "#ef4444" },
-];
 
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { signIn, signInDemo, isDemo, connectionStatus } = useAuth();
+  const { signIn, connectionStatus } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState<UserRole | null>(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -49,15 +40,6 @@ export default function LoginScreen() {
     if (authError) setError(authError);
     setIsLoading(false);
   };
-
-  const handleDemoRole = async (role: UserRole, label: string) => {
-    setDemoLoading(role);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await signInDemo(`${label} (Demo)`, role);
-    setDemoLoading(null);
-  };
-
-  const showDemoSection = isDemo || connectionStatus === "unreachable" || connectionStatus === "unconfigured";
 
   return (
     <KeyboardAwareScrollViewCompat
@@ -82,45 +64,6 @@ export default function LoginScreen() {
         </Text>
       </View>
 
-      {/* Demo mode quick-access */}
-      {showDemoSection && (
-        <View style={[styles.demoCard, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border }]}>
-          <View style={styles.demoHeader}>
-            <Feather name="zap" size={15} color={colors.primary} />
-            <Text style={[styles.demoTitle, { color: colors.foreground }]}>Quick Demo Access</Text>
-          </View>
-          <Text style={[styles.demoSub, { color: colors.mutedForeground }]}>
-            Tap a role to explore the app instantly — no account needed.
-          </Text>
-          <View style={styles.demoGrid}>
-            {DEMO_ROLES.map(({ role, label, icon, color }) => (
-              <Pressable
-                key={role}
-                onPress={() => handleDemoRole(role, label)}
-                disabled={demoLoading !== null}
-                style={[styles.demoBtn, { borderColor: color + "40", backgroundColor: color + "10", borderRadius: colors.radius }]}
-              >
-                {demoLoading === role ? (
-                  <ActivityIndicator size="small" color={color} />
-                ) : (
-                  <Feather name={icon} size={18} color={color} />
-                )}
-                <Text style={[styles.demoBtnText, { color }]}>{label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Divider */}
-      <View style={styles.dividerRow}>
-        <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-        <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>
-          {showDemoSection ? "or sign in with your account" : "sign in"}
-        </Text>
-        <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-      </View>
-
       {/* Form */}
       <View style={styles.form}>
         <Text style={[styles.formTitle, { color: colors.foreground }]}>Welcome Back</Text>
@@ -132,12 +75,11 @@ export default function LoginScreen() {
           </View>
         )}
 
-        {/* Connection status hint */}
         {connectionStatus === "unreachable" && (
           <View style={[styles.warningBox, { backgroundColor: "#f59e0b18", borderRadius: colors.radius, borderColor: "#f59e0b40" }]}>
             <Feather name="wifi-off" size={14} color="#f59e0b" />
             <Text style={[styles.warningText, { color: "#92400e" }]}>
-              Supabase is unreachable — sign in will use local demo mode. Your Supabase project may be paused.
+              Connection issue — sign in may fail. Check your internet or try again shortly.
             </Text>
           </View>
         )}
@@ -204,21 +146,11 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { flexGrow: 1, paddingHorizontal: 24 },
-  logoSection: { alignItems: "center", marginBottom: 28 },
-  logoIcon: { width: 64, height: 64, alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  appName: { fontSize: 28, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  content: { flexGrow: 1, paddingHorizontal: 24, justifyContent: "center" },
+  logoSection: { alignItems: "center", marginBottom: 40 },
+  logoIcon: { width: 72, height: 72, alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  appName: { fontSize: 30, fontFamily: "Inter_700Bold", marginBottom: 6 },
   tagline: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
-  demoCard: { borderWidth: 1, padding: 16, gap: 10, marginBottom: 20 },
-  demoHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  demoTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  demoSub: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
-  demoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  demoBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, paddingVertical: 11, paddingHorizontal: 14, minWidth: "46%" },
-  demoBtnText: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 },
-  dividerLine: { flex: 1, height: 1 },
-  dividerText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   form: { gap: 16 },
   formTitle: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 4 },
   errorBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12 },

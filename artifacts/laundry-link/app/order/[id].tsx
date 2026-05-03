@@ -21,6 +21,7 @@ import { OrderTimeline } from "@/components/OrderTimeline";
 import { PaymentModal } from "@/components/PaymentModal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DISPATCHERS } from "@/constants/services";
+import { LAUNDROMATS } from "@/constants/laundromats";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrders } from "@/contexts/OrdersContext";
 import { useColors } from "@/hooks/useColors";
@@ -120,6 +121,7 @@ export default function OrderDetailScreen() {
     );
   }
 
+  const laundromat = LAUNDROMATS.find((l) => l.id === order.businessId);
   const isUrgent = Boolean(order.urgent);
   const isCustomer = role === "CUSTOMER";
   const isBusinessRole = role === "BUSINESS";
@@ -202,7 +204,7 @@ export default function OrderDetailScreen() {
             </Text>
           </View>
           {order.paystackRef && (
-            <Text style={[styles.refText, { color: colors.mutedForeground }]}>Ref: {order.paystackRef}</Text>
+            <Text style={[styles.refText, { color: colors.mutedForeground }]}>Payment ref: {order.paystackRef}</Text>
           )}
         </View>
 
@@ -212,10 +214,10 @@ export default function OrderDetailScreen() {
             onPress={() => setShowPayment(true)}
             style={[styles.payNowBtn, { backgroundColor: "#059669", borderRadius: colors.radius }]}
           >
-            <Feather name="credit-card" size={18} color="#ffffff" />
+            <Feather name="smartphone" size={18} color="#ffffff" />
             <View>
-              <Text style={styles.payNowText}>Pay ₦{order.totalAmount.toLocaleString()} — Order Ready</Text>
-              <Text style={styles.payNowSub}>Your laundry is clean. Pay to start delivery.</Text>
+              <Text style={styles.payNowText}>Pay ₦{order.totalAmount.toLocaleString()} — Bank Transfer</Text>
+              <Text style={styles.payNowSub}>Your laundry is ready. Transfer to start delivery.</Text>
             </View>
           </Pressable>
         )}
@@ -391,7 +393,9 @@ export default function OrderDetailScreen() {
         visible={showPayment}
         amount={order.totalAmount}
         orderNumber={order.orderNumber}
-        customerEmail={order.customerEmail}
+        bankName={laundromat?.bankName ?? order.businessName}
+        accountNumber={laundromat?.accountNumber ?? "Contact laundromat"}
+        accountName={laundromat?.accountName ?? order.businessName}
         onSuccess={handlePaymentSuccess}
         onClose={() => setShowPayment(false)}
       />

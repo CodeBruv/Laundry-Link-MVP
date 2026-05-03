@@ -1,16 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -20,334 +18,218 @@ interface PaymentModalProps {
   visible: boolean;
   amount: number;
   orderNumber: string;
-  customerEmail?: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
   onSuccess: (reference: string) => void;
   onClose: () => void;
 }
 
-type Stage = "form" | "processing" | "success" | "error";
-
-const PAYSTACK_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY ?? "";
-const HAS_PAYSTACK = PAYSTACK_KEY.startsWith("pk_");
-
-function formatCard(raw: string) {
-  return raw.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
-}
-function formatExpiry(raw: string) {
-  const digits = raw.replace(/\D/g, "").slice(0, 4);
-  if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  return digits;
-}
 function makeRef() {
   return `LL-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    const mod = await import("expo-clipboard");
+    await mod.setStringAsync(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function PaymentModal({
   visible,
   amount,
   orderNumber,
-  customerEmail,
+  bankName,
+  accountNumber,
+  accountName,
   onSuccess,
   onClose,
 }: PaymentModalProps) {
   const colors = useColors();
-  const [stage, setStage] = useState<Stage>("form");
-  const [card, setCard] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvv, setCvv] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const isFormValid =
-    card.replace(/\s/g, "").length === 16 &&
-    expiry.length === 5 &&
-    cvv.length === 3 &&
-    name.trim().length > 1;
-
-  const reset = () => {
-    setStage("form");
-    setCard(""); setExpiry(""); setCvv(""); setName(""); setError("");
+  const handleCopy = async () => {
+    const ok = await copyToClipboard(accountNumber);
+    if (ok) {
+      setCopied(true);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
-  const handleClose = () => { reset(); onClose(); };
+  const handleConfirm = async () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setConfirming(true);
+    await new Promise((r) => setTimeout(r, 700));
+    setConfirming(false);
+    onSuccess(makeRef());
+  };
 
-  // ── Paystack Standard Checkout (web browser redirect) ──────────────────────
-  async function openPaystackCheckout(): Promise<string | null> {
-    const ref = makeRef();
-    const callbackUrl = encodeURIComponent(`laundrylink://payment?reference=${ref}&status=success`);
-    const url =
-      `https://checkout.paystack.com/new/checkout?key=${PAYSTACK_KEY}` +
-      `&email=${encodeURIComponent(customerEmail ?? "customer@laundrylink.app")}` +
-      `&amount=${amount * 100}` +
-      `&currency=NGN` +
-      `&ref=${ref}` +
-      `&callback_url=${callbackUrl}`;
-
-    const result = await WebBrowser.openAuthSessionAsync(url, "laundrylink://payment");
-    if (result.type === "success") {
-      const urlObj = new URL(result.url);
-      const status = urlObj.searchParams.get("status") ?? urlObj.searchParams.get("trxref");
-      if (status === "success" || status) {
-        return urlObj.searchParams.get("reference") ?? ref;
-      }
-    }
-    return null;
-  }
-
-  const handlePay = async () => {
-    setError("");
-    if ((Platform.OS as string) !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    if (HAS_PAYSTACK && (Platform.OS as string) !== "web") {
-      // Real Paystack flow via web browser
-      setStage("processing");
-      try {
-        const ref = await openPaystackCheckout();
-        if (ref) {
-          setStage("success");
-          if ((Platform.OS as string) !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          await new Promise((r) => setTimeout(r, 1200));
-          reset();
-          onSuccess(ref);
-        } else {
-          setStage("error");
-        }
-      } catch {
-        setStage("error");
-      }
-      return;
-    }
-
-    // ── Simulation / demo mode ─────────────────────────────────────────────
-    if (!isFormValid) { setError("Please fill in all card details correctly."); return; }
-    setStage("processing");
-    await new Promise((r) => setTimeout(r, 1800));
-    const ref = makeRef();
-    setStage("success");
-    if ((Platform.OS as string) !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await new Promise((r) => setTimeout(r, 1400));
-    reset();
-    onSuccess(ref);
+  const handleClose = () => {
+    setCopied(false);
+    onClose();
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={[styles.sheet, { backgroundColor: colors.background }]}
-      >
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleClose}
+    >
+      <View style={[styles.sheet, { backgroundColor: colors.background }]}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
-            <View style={[styles.paystackBadge, { backgroundColor: colors.primary }]}>
-              <Feather name="shield" size={16} color={colors.primaryForeground} />
+            <View style={[styles.iconWrap, { backgroundColor: colors.primary }]}>
+              <Feather name="smartphone" size={18} color={colors.primaryForeground} />
             </View>
             <View>
-              <Text style={[styles.headerTitle, { color: colors.foreground }]}>Secure Checkout</Text>
+              <Text style={[styles.headerTitle, { color: colors.foreground }]}>Bank Transfer</Text>
               <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Order #{orderNumber}</Text>
             </View>
           </View>
-          <Pressable onPress={handleClose} style={styles.closeBtn} hitSlop={8}>
+          <Pressable onPress={handleClose} hitSlop={8}>
             <Feather name="x" size={22} color={colors.mutedForeground} />
           </Pressable>
         </View>
 
-        {/* Test-mode badge */}
-        {!HAS_PAYSTACK && stage === "form" && (
-          <View style={[styles.testBadge, { backgroundColor: "#f59e0b18", borderColor: "#f59e0b30" }]}>
-            <Feather name="info" size={12} color="#f59e0b" />
-            <Text style={styles.testText}>
-              Demo mode — card form is simulated. Set EXPO_PUBLIC_PAYSTACK_KEY to enable live payments.
+        <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+          {/* Amount */}
+          <View style={[styles.amountBox, { backgroundColor: colors.primary + "10", borderRadius: colors.radius }]}>
+            <Text style={[styles.amountLabel, { color: colors.mutedForeground }]}>Amount to transfer</Text>
+            <Text style={[styles.amountValue, { color: colors.primary }]}>₦{amount.toLocaleString()}</Text>
+          </View>
+
+          {/* P2P note */}
+          <View style={[styles.noteBox, { backgroundColor: "#05966910", borderRadius: colors.radius, borderColor: "#05966930" }]}>
+            <Feather name="shield" size={14} color="#059669" />
+            <Text style={[styles.noteText, { color: "#065f46" }]}>
+              Transfer goes directly to the laundromat. LaundryLink does not hold or process this payment.
             </Text>
           </View>
-        )}
 
-        {/* Paystack redirect mode hint */}
-        {HAS_PAYSTACK && Platform.OS !== "web" && stage === "form" && (
-          <View style={[styles.testBadge, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "20" }]}>
-            <Feather name="external-link" size={12} color={colors.primary} />
-            <Text style={[styles.testText, { color: colors.primary }]}>
-              Tap Pay to open Paystack secure checkout
-            </Text>
-          </View>
-        )}
+          {/* Bank details */}
+          <View style={[styles.bankCard, { backgroundColor: colors.card, borderRadius: colors.radius }]}>
+            <Text style={[styles.bankCardTitle, { color: colors.foreground }]}>Transfer to</Text>
 
-        {/* ── Form stage ────────────────────────────────────────────────────── */}
-        {stage === "form" && (
-          <View style={styles.body}>
-            <View style={[styles.amountBox, { backgroundColor: colors.primary + "10", borderRadius: colors.radius }]}>
-              <Text style={[styles.amountLabel, { color: colors.mutedForeground }]}>Amount due</Text>
-              <Text style={[styles.amountValue, { color: colors.primary }]}>₦{amount.toLocaleString()}</Text>
+            <View style={styles.bankRow}>
+              <Text style={[styles.bankLabel, { color: colors.mutedForeground }]}>Bank</Text>
+              <Text style={[styles.bankValue, { color: colors.foreground }]}>{bankName || "Contact laundromat"}</Text>
             </View>
 
-            {/* Show card form only in simulation mode */}
-            {!HAS_PAYSTACK && (
-              <>
-                <LabeledInput label="Cardholder name" value={name} onChangeText={setName}
-                  placeholder="Full name on card" autoCapitalize="words" colors={colors} />
-                <LabeledInput label="Card number" value={card}
-                  onChangeText={(t) => setCard(formatCard(t))}
-                  placeholder="0000 0000 0000 0000" keyboardType="numeric"
-                  colors={colors} icon="credit-card" />
-                <View style={styles.row}>
-                  <View style={{ flex: 1 }}>
-                    <LabeledInput label="Expiry" value={expiry}
-                      onChangeText={(t) => setExpiry(formatExpiry(t))}
-                      placeholder="MM/YY" keyboardType="numeric" colors={colors} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <LabeledInput label="CVV" value={cvv}
-                      onChangeText={(t) => setCvv(t.replace(/\D/g, "").slice(0, 3))}
-                      placeholder="000" keyboardType="numeric" secureTextEntry colors={colors} />
-                  </View>
+            <View style={[styles.bankRow, { flexDirection: "row", alignItems: "center" }]}>
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={[styles.bankLabel, { color: colors.mutedForeground }]}>Account Number</Text>
+                <Text style={[styles.bankAccNum, { color: colors.foreground }]}>
+                  {accountNumber || "—"}
+                </Text>
+              </View>
+              <Pressable
+                onPress={handleCopy}
+                style={[styles.copyBtn, { backgroundColor: copied ? "#05966918" : colors.primary + "12", borderRadius: 8 }]}
+                hitSlop={8}
+              >
+                <Feather name={copied ? "check" : "copy"} size={14} color={copied ? "#059669" : colors.primary} />
+                <Text style={[styles.copyText, { color: copied ? "#059669" : colors.primary }]}>
+                  {copied ? "Copied" : "Copy"}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.bankRow}>
+              <Text style={[styles.bankLabel, { color: colors.mutedForeground }]}>Account Name</Text>
+              <Text style={[styles.bankValue, { color: colors.foreground }]}>{accountName || "—"}</Text>
+            </View>
+          </View>
+
+          {/* Steps */}
+          <View style={[styles.stepsCard, { backgroundColor: colors.card, borderRadius: colors.radius }]}>
+            {[
+              { icon: "smartphone" as const, text: "Open your mobile banking app or dial your bank's USSD code" },
+              { icon: "send" as const, text: `Transfer ₦${amount.toLocaleString()} to the account above` },
+              { icon: "check-circle" as const, text: "Return here and tap the button below to confirm" },
+            ].map((step, i, arr) => (
+              <View
+                key={i}
+                style={[
+                  styles.stepRow,
+                  i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                ]}
+              >
+                <View style={[styles.stepIcon, { backgroundColor: colors.primary + "12" }]}>
+                  <Feather name={step.icon} size={15} color={colors.primary} />
                 </View>
+                <Text style={[styles.stepText, { color: colors.foreground }]}>{step.text}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Confirm button */}
+          <Pressable
+            onPress={handleConfirm}
+            disabled={confirming}
+            style={[
+              styles.confirmBtn,
+              { backgroundColor: "#059669", borderRadius: colors.radius, opacity: confirming ? 0.7 : 1 },
+            ]}
+          >
+            {confirming ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <>
+                <Feather name="check-circle" size={18} color="#ffffff" />
+                <Text style={styles.confirmBtnText}>I've completed the transfer</Text>
               </>
             )}
+          </Pressable>
 
-            {!!error && (
-              <View style={[styles.errorRow, { backgroundColor: "#ef444412", borderRadius: colors.radius }]}>
-                <Feather name="alert-circle" size={14} color="#ef4444" />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            <Pressable
-              onPress={handlePay}
-              disabled={!HAS_PAYSTACK && !isFormValid}
-              style={[
-                styles.payBtn,
-                {
-                  backgroundColor: colors.primary,
-                  borderRadius: colors.radius,
-                  opacity: (!HAS_PAYSTACK && !isFormValid) ? 0.5 : 1,
-                },
-              ]}
-            >
-              <Feather name={HAS_PAYSTACK ? "external-link" : "lock"} size={16} color={colors.primaryForeground} />
-              <Text style={[styles.payBtnText, { color: colors.primaryForeground }]}>
-                Pay ₦{amount.toLocaleString()} {HAS_PAYSTACK ? "via Paystack" : "securely"}
-              </Text>
-            </Pressable>
-
-            <View style={styles.securityRow}>
-              <Feather name="shield" size={12} color={colors.mutedForeground} />
-              <Text style={[styles.securityText, { color: colors.mutedForeground }]}>
-                256-bit SSL encrypted · Powered by Paystack
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* ── Processing ───────────────────────────────────────────────────── */}
-        {stage === "processing" && (
-          <View style={styles.statusCenter}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.statusTitle, { color: colors.foreground }]}>Processing payment…</Text>
-            <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
-              Please do not close this screen.
-            </Text>
-          </View>
-        )}
-
-        {/* ── Success ──────────────────────────────────────────────────────── */}
-        {stage === "success" && (
-          <View style={styles.statusCenter}>
-            <View style={[styles.bigIcon, { backgroundColor: "#10b98118" }]}>
-              <Feather name="check-circle" size={52} color="#10b981" />
-            </View>
-            <Text style={[styles.statusTitle, { color: colors.foreground }]}>Payment successful!</Text>
-            <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
-              Your order has been marked as paid and the laundromat will be notified.
-            </Text>
-          </View>
-        )}
-
-        {/* ── Error ────────────────────────────────────────────────────────── */}
-        {stage === "error" && (
-          <View style={styles.statusCenter}>
-            <View style={[styles.bigIcon, { backgroundColor: "#ef444418" }]}>
-              <Feather name="x-circle" size={52} color="#ef4444" />
-            </View>
-            <Text style={[styles.statusTitle, { color: colors.foreground }]}>Payment cancelled</Text>
-            <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
-              Payment was not completed. Please try again.
-            </Text>
-            <Pressable
-              onPress={() => setStage("form")}
-              style={[styles.retryBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
-            >
-              <Text style={[styles.retryText, { color: colors.primaryForeground }]}>Try again</Text>
-            </Pressable>
-          </View>
-        )}
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-function LabeledInput({
-  label, value, onChangeText, placeholder, keyboardType, secureTextEntry,
-  autoCapitalize, icon, colors,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder: string;
-  keyboardType?: "numeric" | "default";
-  secureTextEntry?: boolean;
-  autoCapitalize?: "none" | "words";
-  icon?: keyof typeof Feather.glyphMap;
-  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
-}) {
-  return (
-    <View style={styles.inputWrap}>
-      <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <View style={[styles.inputBox, { borderColor: colors.input, borderRadius: colors.radius }]}>
-        {icon && <Feather name={icon} size={15} color={colors.mutedForeground} style={{ marginLeft: 12 }} />}
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.mutedForeground}
-          keyboardType={keyboardType ?? "default"}
-          secureTextEntry={secureTextEntry}
-          autoCapitalize={autoCapitalize ?? "none"}
-          style={[styles.input, { color: colors.foreground }]}
-        />
+          <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
+            Tap confirm only after the transfer is complete. The laundromat will verify receipt before dispatching your order.
+          </Text>
+        </ScrollView>
       </View>
-    </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   sheet: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, borderBottomWidth: 1 },
+  header: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    padding: 20, borderBottomWidth: 1,
+  },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  paystackBadge: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  iconWrap: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   headerTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
-  closeBtn: { padding: 6 },
-  testBadge: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginHorizontal: 20, marginTop: 14, padding: 12, borderRadius: 10, borderWidth: 1 },
-  testText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: "#92400e", lineHeight: 16 },
   body: { padding: 20, gap: 16 },
-  amountBox: { paddingHorizontal: 16, paddingVertical: 14, gap: 4 },
+  amountBox: { paddingHorizontal: 16, paddingVertical: 16, gap: 4 },
   amountLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  amountValue: { fontSize: 30, fontFamily: "Inter_700Bold" },
-  inputWrap: { gap: 6 },
-  inputLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  inputBox: { flexDirection: "row", alignItems: "center", borderWidth: 1 },
-  input: { flex: 1, paddingHorizontal: 12, paddingVertical: 13, fontSize: 15, fontFamily: "Inter_400Regular" },
-  row: { flexDirection: "row", gap: 12 },
-  errorRow: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12 },
-  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#ef4444" },
-  payBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 17, marginTop: 4 },
-  payBtnText: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  securityRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
-  securityText: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  statusCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 },
-  bigIcon: { width: 100, height: 100, borderRadius: 50, alignItems: "center", justifyContent: "center" },
-  statusTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
-  statusSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 21 },
-  retryBtn: { paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
-  retryText: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  amountValue: { fontSize: 34, fontFamily: "Inter_700Bold" },
+  noteBox: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 12, borderWidth: 1 },
+  noteText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", lineHeight: 17 },
+  bankCard: { padding: 16, gap: 14 },
+  bankCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", marginBottom: 2 },
+  bankRow: { gap: 4 },
+  bankLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  bankValue: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  bankAccNum: { fontSize: 24, fontFamily: "Inter_700Bold", letterSpacing: 2 },
+  copyBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 7 },
+  copyText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  stepsCard: { overflow: "hidden" },
+  stepRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  stepIcon: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  stepText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  confirmBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10, paddingVertical: 17, marginTop: 4,
+  },
+  confirmBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#ffffff" },
+  disclaimer: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
 });

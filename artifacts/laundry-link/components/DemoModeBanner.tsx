@@ -5,39 +5,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth, ConnectionStatus } from "@/contexts/AuthContext";
 
-type BannerConfig = {
-  bg: string;
-  icon: keyof typeof Feather.glyphMap;
-  text: string;
-};
-
-function getConfig(status: ConnectionStatus): BannerConfig | null {
-  switch (status) {
-    case "unconfigured":
-      return {
-        bg: "#f59e0b",
-        icon: "info",
-        text: "Demo mode — Supabase keys not set. Data is stored locally.",
-      };
-    case "unreachable":
-      return {
-        bg: "#ef4444",
-        icon: "wifi-off",
-        text: "Supabase unreachable — check your internet or resume your Supabase project.",
-      };
-    // "checking" is now transient (non-blocking probe runs in background).
-    // We don't show a banner for it — the app is usable immediately.
-    case "checking":
-    case "connected":
-    default:
-      return null;
+function getBanner(status: ConnectionStatus): { bg: string; icon: keyof typeof Feather.glyphMap; text: string } | null {
+  if (status === "unreachable") {
+    return {
+      bg: "#ef4444",
+      icon: "wifi-off",
+      text: "Server unreachable — check your internet connection or try again shortly.",
+    };
   }
+  return null;
 }
 
 export function DemoModeBanner() {
   const insets = useSafeAreaInsets();
   const { connectionStatus } = useAuth();
-  const config = getConfig(connectionStatus);
+  const config = getBanner(connectionStatus);
 
   if (!config) return null;
 

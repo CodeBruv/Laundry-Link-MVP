@@ -238,7 +238,7 @@ export function SubscriptionPaywall({ onClose, onSuccess }: Props) {
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
           <>
-            <Feather name={mode === "trial" ? "gift" : "credit-card"} size={18} color={colors.primaryForeground} />
+            <Feather name={mode === "trial" ? "gift" : "arrow-right"} size={18} color={colors.primaryForeground} />
             <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
               {mode === "trial"
                 ? `Start 7-Day Free Trial — ${selectedPlan.name}`

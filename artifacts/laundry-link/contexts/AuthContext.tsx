@@ -40,7 +40,6 @@ interface AuthContextType {
     email: string,
     password: string,
   ) => Promise<{ error: string | null }>;
-  signInDemo: (fullName: string, role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -53,7 +52,6 @@ const AuthContext = createContext<AuthContextType>({
   connectionStatus: "checking",
   signUp: async () => ({ error: null }),
   signIn: async () => ({ error: null }),
-  signInDemo: async () => {},
   signOut: async () => {},
 });
 
@@ -89,7 +87,7 @@ function useProtectedRoute(
 // ── Helpers ────────────────────────────────────────────────────────────────
 function makeDemoUser(fullName: string, email: string, role: UserRole): User {
   return {
-    id: `demo_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`,
+    id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`,
     email,
     app_metadata: {},
     user_metadata: { full_name: fullName, role },
@@ -187,19 +185,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useProtectedRoute(user, role, isLoading);
-
-  // ── Demo sign-in (role buttons on login screen) ────────────────────────
-  const signInDemo = useCallback(async (fullName: string, demoRole: UserRole) => {
-    const demoUser = makeDemoUser(
-      fullName,
-      `${demoRole.toLowerCase()}@demo.local`,
-      demoRole,
-    );
-    setUser(demoUser);
-    setRole(demoRole);
-    await AsyncStorage.setItem("demo_role", demoRole);
-    await AsyncStorage.setItem("demo_user", JSON.stringify(demoUser));
-  }, []);
 
   // ── Sign up ────────────────────────────────────────────────────────────
   const signUp = useCallback(async (
@@ -315,7 +300,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         connectionStatus,
         signUp,
         signIn,
-        signInDemo,
         signOut,
       }}
     >

@@ -9,9 +9,9 @@ export const SUBSCRIPTION_PLANS = [
   {
     id: "STARTER" as SubscriptionTier,
     name: "Starter",
-    monthlyPrice: 15000,
+    monthlyPrice: 10000,
     currency: "NGN",
-    displayPrice: "₦15,000",
+    displayPrice: "₦10,000",
     features: [
       "Up to 50 orders/month",
       "1 dispatcher account",
@@ -27,9 +27,9 @@ export const SUBSCRIPTION_PLANS = [
   {
     id: "PRO" as SubscriptionTier,
     name: "Pro",
-    monthlyPrice: 35000,
+    monthlyPrice: 18000,
     currency: "NGN",
-    displayPrice: "₦35,000",
+    displayPrice: "₦18,000",
     features: [
       "Up to 250 orders/month",
       "5 dispatcher accounts",
@@ -46,9 +46,9 @@ export const SUBSCRIPTION_PLANS = [
   {
     id: "ENTERPRISE" as SubscriptionTier,
     name: "Enterprise",
-    monthlyPrice: 70000,
+    monthlyPrice: 30000,
     currency: "NGN",
-    displayPrice: "₦70,000",
+    displayPrice: "₦30,000",
     features: [
       "Unlimited orders",
       "Unlimited dispatchers",
