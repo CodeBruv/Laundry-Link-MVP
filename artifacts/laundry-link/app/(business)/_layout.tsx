@@ -1,7 +1,6 @@
 import { BlurView } from "expo-blur";
-import { Tabs } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
@@ -41,11 +40,7 @@ export default function BusinessLayout() {
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView
-              intensity={95}
-              tint={isDark ? "dark" : "extraLight"}
-              style={StyleSheet.absoluteFill}
-            />
+            <BlurView intensity={95} tint={isDark ? "dark" : "extraLight"} style={StyleSheet.absoluteFill} />
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.card }]} />
           ),
@@ -56,48 +51,28 @@ export default function BusinessLayout() {
         options={{
           title: "Business Dashboard",
           tabBarLabel: "Dashboard",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "chart.bar.fill" : "chart.bar"} tintColor={color} size={22} />
-            ) : (
-              <Feather name="bar-chart-2" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="bar-chart-2" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
           title: "Orders",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "list.bullet.rectangle.fill" : "list.bullet.rectangle"} tintColor={color} size={22} />
-            ) : (
-              <Feather name="clipboard" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="clipboard" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
           title: "Analytics",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "chart.line.uptrend.xyaxis.circle.fill" : "chart.line.uptrend.xyaxis"} tintColor={color} size={22} />
-            ) : (
-              <Feather name="trending-up" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="trending-up" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="services"
         options={{
           title: "Services",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "tag.fill" : "tag"} tintColor={color} size={22} />
-            ) : (
-              <Feather name="tag" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="tag" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -105,24 +80,14 @@ export default function BusinessLayout() {
         options={{
           title: "Subscription",
           tabBarLabel: "Plan",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "creditcard.fill" : "creditcard"} tintColor={color} size={22} />
-            ) : (
-              <Feather name="credit-card" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="credit-card" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={22} />
-            ) : (
-              <Feather name="user" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="user" size={22} color={color} />,
         }}
       />
     </Tabs>

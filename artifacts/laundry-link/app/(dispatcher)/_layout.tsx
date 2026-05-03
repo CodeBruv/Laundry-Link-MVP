@@ -1,7 +1,6 @@
 import { BlurView } from "expo-blur";
-import { Tabs } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
@@ -41,11 +40,7 @@ export default function DispatcherLayout() {
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView
-              intensity={95}
-              tint={isDark ? "dark" : "extraLight"}
-              style={StyleSheet.absoluteFill}
-            />
+            <BlurView intensity={95} tint={isDark ? "dark" : "extraLight"} style={StyleSheet.absoluteFill} />
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.card }]} />
           ),
@@ -56,24 +51,14 @@ export default function DispatcherLayout() {
         options={{
           title: "Dispatcher Hub",
           tabBarLabel: "Dashboard",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "house.fill" : "house"} tintColor={color} size={22} />
-            ) : (
-              <Feather name="home" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="home" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="deliveries"
         options={{
           title: "Deliveries",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "car.fill" : "car"} tintColor={color} size={22} />
-            ) : (
-              <Feather name="truck" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="truck" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -81,18 +66,13 @@ export default function DispatcherLayout() {
         options={{
           title: "My Profile",
           tabBarLabel: "Profile",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={22} />
-            ) : (
-              <Feather name="user" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="user" size={22} color={color} />,
         }}
       />
       {/* Hidden screens */}
       <Tabs.Screen name="vehicle-details" options={{ href: null, title: "Vehicle Details" }} />
-      <Tabs.Screen name="service-area" options={{ href: null, title: "Service Area" }} />
-      <Tabs.Screen name="kyc" options={{ href: null, title: "KYC Documents" }} />
+      <Tabs.Screen name="service-area"    options={{ href: null, title: "Service Area" }} />
+      <Tabs.Screen name="kyc"             options={{ href: null, title: "KYC Documents" }} />
     </Tabs>
   );
 }
