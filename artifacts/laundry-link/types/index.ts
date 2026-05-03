@@ -33,10 +33,14 @@ export interface Order {
   status: OrderStatus;
   items: OrderItem[];
   totalAmount: number;
+  deliveryFee: number;
   pickupAddress: string;
   deliveryAddress: string;
   specialRequests?: string;
   urgent?: boolean;
+  driverLatitude?: number;
+  driverLongitude?: number;
+  isDriverLocationShared?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -96,6 +100,7 @@ export interface CreateOrderInput {
   deliveryAddress: string;
   items: OrderItem[];
   totalAmount: number;
+  deliveryFee: number;
   specialRequests?: string;
   urgent?: boolean;
 }

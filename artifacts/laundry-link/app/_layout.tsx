@@ -18,6 +18,7 @@ import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrdersProvider } from "@/contexts/OrdersContext";
+import { registerForPushNotificationsAsync } from "@/lib/notifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,6 +33,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(business)" />
       <Stack.Screen name="(dispatcher)" />
       <Stack.Screen name="(admin)" />
+      <Stack.Screen name="order/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }
@@ -47,6 +49,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
+      // Request push notification permission early (non-blocking)
+      registerForPushNotificationsAsync().catch(() => {});
     }
   }, [fontsLoaded, fontError]);
 
