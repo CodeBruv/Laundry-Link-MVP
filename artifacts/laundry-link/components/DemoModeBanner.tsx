@@ -23,14 +23,11 @@ function getConfig(status: ConnectionStatus): BannerConfig | null {
       return {
         bg: "#ef4444",
         icon: "wifi-off",
-        text: "Supabase unreachable — running in offline demo mode. Check project URL or resume your Supabase project.",
+        text: "Supabase unreachable — check your internet or resume your Supabase project.",
       };
+    // "checking" is now transient (non-blocking probe runs in background).
+    // We don't show a banner for it — the app is usable immediately.
     case "checking":
-      return {
-        bg: "#6366f1",
-        icon: "loader",
-        text: "Checking Supabase connection…",
-      };
     case "connected":
     default:
       return null;

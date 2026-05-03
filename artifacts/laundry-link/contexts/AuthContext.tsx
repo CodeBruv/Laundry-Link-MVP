@@ -27,6 +27,7 @@ interface AuthContextType {
   session: Session | null;
   role: UserRole | null;
   isLoading: boolean;
+  /** true ONLY when Supabase keys are not configured at all */
   isDemo: boolean;
   connectionStatus: ConnectionStatus;
   signUp: (
@@ -97,42 +98,42 @@ function makeDemoUser(fullName: string, email: string, role: UserRole): User {
   } as User;
 }
 
-// Wraps a Supabase call — converts any thrown error to { error: string }
+// Wraps a Supabase call and logs + re-surfaces the actual error message.
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await fn();
   } catch (e: any) {
-    console.log("[LaundryLink] Supabase error (caught):", e?.message ?? e);
+    const msg = e?.message ?? String(e);
+    console.log("[LaundryLink] Supabase call failed:", msg);
     return fallback;
   }
 }
 
 // ── Provider ───────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser]           = useState<User | null>(null);
-  const [session, setSession]     = useState<Session | null>(null);
-  const [role, setRole]           = useState<UserRole | null>(null);
+  const [user, setUser]       = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [role, setRole]       = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
     isSupabaseConfigured ? "checking" : "unconfigured",
   );
 
-  // isDemo = anything other than a confirmed live Supabase connection
-  const isDemo = connectionStatus !== "connected";
+  // isDemo is TRUE only when keys are absent — NOT when the probe timed out.
+  // This ensures signIn/signUp always attempt real Supabase auth when configured.
+  const isDemo = !isSupabaseConfigured;
 
   useEffect(() => {
     let authSub: { unsubscribe: () => void } | null = null;
 
     const init = async () => {
-      // Restore any previously persisted demo session (instant, no network)
-      const [savedUser, savedRole] = await Promise.all([
-        AsyncStorage.getItem("demo_user").catch(() => null),
-        AsyncStorage.getItem("demo_role").catch(() => null),
-      ]);
-
-      // ── No keys configured → demo immediately ─────────────────────────
+      // ── No keys configured → pure demo mode ───────────────────────────
       if (!isSupabaseConfigured) {
         setConnectionStatus("unconfigured");
+        const [savedUser, savedRole] = await Promise.all([
+          AsyncStorage.getItem("demo_user").catch(() => null),
+          AsyncStorage.getItem("demo_role").catch(() => null),
+        ]);
         if (savedUser && savedRole) {
           try {
             setUser(JSON.parse(savedUser));
@@ -143,31 +144,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // ── Keys present → probe the server before making any auth calls ───
-      // testSupabaseConnection() uses plain fetch (not the Supabase client)
-      // so no GoTrueClient network requests happen before this resolves.
-      const reachable = await testSupabaseConnection();
-
-      if (!reachable) {
-        setConnectionStatus("unreachable");
-        if (savedUser && savedRole) {
-          try {
-            setUser(JSON.parse(savedUser));
-            setRole(savedRole as UserRole);
-          } catch {}
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      // ── Server is reachable → activate auto-refresh and restore session ─
-      setConnectionStatus("connected");
-
-      // Enable background token refresh now that we know the server is up.
-      // This avoids the "multiple GoTrueClient instances" warning because
-      // we reuse the single supabase client created in lib/supabase.ts.
-      try { supabase.auth.startAutoRefresh(); } catch {}
-
+      // ── Keys present → restore session immediately (no probe wait) ─────
+      // Session is stored in AsyncStorage by the Supabase client itself.
+      // We do NOT wait for the probe before restoring — this is what allows
+      // instant login on app re-open even with a slow mobile connection.
       const sessionResult = await safe(
         () => supabase.auth.getSession(),
         { data: { session: null }, error: null },
@@ -179,10 +159,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole((s.user.user_metadata?.role as UserRole) || "CUSTOMER");
       }
 
-      // Register auth state listener ONLY after connection is confirmed.
-      // This prevents Supabase from firing network requests during the
-      // connection-check phase.
+      // Register auth state listener — fires on sign-in, sign-out, token refresh
       const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        console.log("[LaundryLink] Auth state changed:", _event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setRole(
@@ -194,6 +173,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authSub = data.subscription;
 
       setIsLoading(false);
+
+      // ── Run connection probe in the background (informational only) ────
+      // This sets connectionStatus for the UI banner but does NOT block auth.
+      testSupabaseConnection().then((reachable) => {
+        setConnectionStatus(reachable ? "connected" : "unreachable");
+        console.log(`[LaundryLink] Connection status → ${reachable ? "connected" : "unreachable"}`);
+      });
     };
 
     init();
@@ -216,104 +202,107 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Sign up ────────────────────────────────────────────────────────────
-  const signUp = useCallback(
-    async (
-      email: string,
-      password: string,
-      fullName: string,
-      selectedRole: UserRole,
-    ) => {
-      if (isDemo) {
-        const demoUser = makeDemoUser(fullName, email, selectedRole);
-        setUser(demoUser);
-        setRole(selectedRole);
-        await AsyncStorage.setItem("demo_role", selectedRole);
-        await AsyncStorage.setItem("demo_user", JSON.stringify(demoUser));
-        return { error: null };
-      }
-
-      const result = await safe(
-        () =>
-          supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: fullName, role: selectedRole } },
-          }),
-        {
-          data: { user: null, session: null },
-          error: { message: "Network error — please check your connection." } as any,
-        },
-      );
-      if (result.error) return { error: result.error.message };
-
-      const updateResult = await safe(
-        () =>
-          supabase.auth.updateUser({
-            data: { full_name: fullName, role: selectedRole },
-          }),
-        { data: { user: null as any }, error: null },
-      );
-      const finalUser = updateResult.data.user ?? result.data.user;
-      if (finalUser) setUser(finalUser);
+  const signUp = useCallback(async (
+    email: string,
+    password: string,
+    fullName: string,
+    selectedRole: UserRole,
+  ) => {
+    // Pure demo mode — keys not configured
+    if (isDemo) {
+      const demoUser = makeDemoUser(fullName, email, selectedRole);
+      setUser(demoUser);
       setRole(selectedRole);
-      await AsyncStorage.setItem("user_role", selectedRole);
+      await AsyncStorage.setItem("demo_role", selectedRole);
+      await AsyncStorage.setItem("demo_user", JSON.stringify(demoUser));
       return { error: null };
-    },
-    [isDemo],
-  );
+    }
+
+    // Always try real Supabase when configured
+    const result = await safe(
+      () =>
+        supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName, role: selectedRole } },
+        }),
+      {
+        data: { user: null, session: null },
+        error: { message: "Network request failed — check your internet connection and try again." } as any,
+      },
+    );
+    if (result.error) return { error: result.error.message };
+
+    // Persist role in user metadata
+    await safe(
+      () => supabase.auth.updateUser({ data: { full_name: fullName, role: selectedRole } }),
+      { data: { user: null as any }, error: null },
+    );
+    const finalUser = result.data.user;
+    if (finalUser) setUser(finalUser);
+    setRole(selectedRole);
+    await AsyncStorage.setItem("user_role", selectedRole);
+    return { error: null };
+  }, [isDemo]);
 
   // ── Sign in ────────────────────────────────────────────────────────────
-  const signIn = useCallback(
-    async (email: string, password: string) => {
-      if (isDemo) {
-        const savedUser = await AsyncStorage.getItem("demo_user").catch(() => null);
-        if (savedUser) {
-          try {
-            const parsed = JSON.parse(savedUser);
-            setUser(parsed);
-            setRole((parsed.user_metadata?.role as UserRole) || "CUSTOMER");
-            return { error: null };
-          } catch {}
-        }
-        const demoUser = makeDemoUser("Demo User", email, "CUSTOMER");
-        setUser(demoUser);
-        setRole("CUSTOMER");
-        await AsyncStorage.setItem("demo_role", "CUSTOMER");
-        await AsyncStorage.setItem("demo_user", JSON.stringify(demoUser));
-        return { error: null };
+  // CRITICAL: Always tries real Supabase auth when configured.
+  // Never silently falls to demo if keys are present — shows the real error instead.
+  const signIn = useCallback(async (email: string, password: string) => {
+    // Pure demo mode — keys not configured
+    if (isDemo) {
+      const savedUser = await AsyncStorage.getItem("demo_user").catch(() => null);
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          setUser(parsed);
+          setRole((parsed.user_metadata?.role as UserRole) || "CUSTOMER");
+          return { error: null };
+        } catch {}
       }
-
-      const result = await safe(
-        () => supabase.auth.signInWithPassword({ email, password }),
-        {
-          data: { user: null, session: null },
-          error: { message: "Network error — please check your connection." } as any,
-        },
-      );
-      if (result.error) return { error: result.error.message };
-      if (result.data.user) {
-        const r = (result.data.user.user_metadata?.role as UserRole) || "CUSTOMER";
-        setRole(r);
-        await AsyncStorage.setItem("user_role", r);
-      }
+      const demoUser = makeDemoUser("Demo User", email, "CUSTOMER");
+      setUser(demoUser);
+      setRole("CUSTOMER");
+      await AsyncStorage.setItem("demo_role", "CUSTOMER");
+      await AsyncStorage.setItem("demo_user", JSON.stringify(demoUser));
       return { error: null };
-    },
-    [isDemo],
-  );
+    }
+
+    // Real Supabase auth — always attempted when keys are configured
+    console.log("[LaundryLink] signIn → calling supabase.auth.signInWithPassword");
+    let result: { data: { user: User | null; session: Session | null }; error: { message: string } | null };
+    try {
+      result = await supabase.auth.signInWithPassword({ email, password });
+    } catch (e: any) {
+      const msg = e?.message ?? "Network request failed — check your internet connection.";
+      console.log("[LaundryLink] signIn exception:", msg);
+      return { error: msg };
+    }
+
+    if (result.error) {
+      console.log("[LaundryLink] signIn Supabase error:", result.error.message);
+      return { error: result.error.message };
+    }
+
+    if (result.data.user) {
+      const r = (result.data.user.user_metadata?.role as UserRole) || "CUSTOMER";
+      setRole(r);
+      await AsyncStorage.setItem("user_role", r);
+      console.log("[LaundryLink] signIn success, role:", r);
+    }
+    return { error: null };
+  }, [isDemo]);
 
   // ── Sign out ───────────────────────────────────────────────────────────
   const signOut = useCallback(async () => {
-    if (!isDemo) {
+    if (isSupabaseConfigured) {
       await safe(() => supabase.auth.signOut(), undefined);
-      try { supabase.auth.stopAutoRefresh(); } catch {}
     }
-    await AsyncStorage.multiRemove(["demo_role", "demo_user", "user_role"]).catch(
-      () => {},
-    );
+    await AsyncStorage.multiRemove(["demo_role", "demo_user", "user_role"]).catch(() => {});
     setUser(null);
     setRole(null);
     setSession(null);
-  }, [isDemo]);
+  }, []);
 
   return (
     <AuthContext.Provider
