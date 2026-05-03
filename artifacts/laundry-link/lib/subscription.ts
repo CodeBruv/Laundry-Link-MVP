@@ -9,13 +9,16 @@ export const SUBSCRIPTION_PLANS = [
   {
     id: "STARTER" as SubscriptionTier,
     name: "Starter",
-    monthlyPrice: 29,
+    monthlyPrice: 15000,
+    currency: "NGN",
+    displayPrice: "₦15,000",
     features: [
       "Up to 50 orders/month",
       "1 dispatcher account",
-      "Basic analytics",
+      "Basic analytics dashboard",
       "Email support",
       "Customer order tracking",
+      "P2P payment confirmations",
     ],
     maxOrders: 50,
     maxDispatchers: 1,
@@ -24,14 +27,17 @@ export const SUBSCRIPTION_PLANS = [
   {
     id: "PRO" as SubscriptionTier,
     name: "Pro",
-    monthlyPrice: 79,
+    monthlyPrice: 35000,
+    currency: "NGN",
+    displayPrice: "₦35,000",
     features: [
       "Up to 250 orders/month",
       "5 dispatcher accounts",
-      "Advanced analytics & reports",
-      "Priority email support",
+      "Full analytics & reports",
+      "Priority support",
       "Live driver tracking",
       "Custom service pricing",
+      "SMS notifications",
     ],
     maxOrders: 250,
     maxDispatchers: 5,
@@ -40,15 +46,18 @@ export const SUBSCRIPTION_PLANS = [
   {
     id: "ENTERPRISE" as SubscriptionTier,
     name: "Enterprise",
-    monthlyPrice: 149,
+    monthlyPrice: 70000,
+    currency: "NGN",
+    displayPrice: "₦70,000",
     features: [
       "Unlimited orders",
       "Unlimited dispatchers",
       "Full analytics suite",
-      "Dedicated support",
+      "Dedicated account manager",
       "Multi-branch support",
       "API access",
       "White-label option",
+      "SLA guarantee",
     ],
     maxOrders: Infinity,
     maxDispatchers: Infinity,
@@ -65,7 +74,8 @@ export type SubscriptionFeature =
   | "multiBranch"
   | "apiAccess"
   | "whiteLabel"
-  | "prioritySupport";
+  | "prioritySupport"
+  | "smsNotifications";
 
 const FEATURE_TIERS: Record<SubscriptionFeature, SubscriptionTier[]> = {
   orders: ["STARTER", "PRO", "ENTERPRISE"],
@@ -73,6 +83,7 @@ const FEATURE_TIERS: Record<SubscriptionFeature, SubscriptionTier[]> = {
   reports: ["PRO", "ENTERPRISE"],
   liveTracking: ["PRO", "ENTERPRISE"],
   customPricing: ["PRO", "ENTERPRISE"],
+  smsNotifications: ["PRO", "ENTERPRISE"],
   multiBranch: ["ENTERPRISE"],
   apiAccess: ["ENTERPRISE"],
   whiteLabel: ["ENTERPRISE"],
@@ -115,14 +126,10 @@ export async function getSubscription(): Promise<SubscriptionState> {
     if (!raw) return DEFAULT_STATE;
     const state = JSON.parse(raw) as SubscriptionState;
     if (state.isTrial && state.trialExpiresAt) {
-      if (new Date(state.trialExpiresAt) < new Date()) {
-        return { ...state, active: false };
-      }
+      if (new Date(state.trialExpiresAt) < new Date()) return { ...state, active: false };
     }
     if (!state.isTrial && state.expiresAt) {
-      if (new Date(state.expiresAt) < new Date()) {
-        return { ...state, active: false };
-      }
+      if (new Date(state.expiresAt) < new Date()) return { ...state, active: false };
     }
     return state;
   } catch {
@@ -131,9 +138,7 @@ export async function getSubscription(): Promise<SubscriptionState> {
 }
 
 export async function startTrial(tier: SubscriptionTier): Promise<SubscriptionState> {
-  const trialExpiresAt = new Date(
-    Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  const trialExpiresAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const state: SubscriptionState = {
     tier,
     active: true,
@@ -147,9 +152,7 @@ export async function startTrial(tier: SubscriptionTier): Promise<SubscriptionSt
 }
 
 export async function subscribe(tier: SubscriptionTier): Promise<SubscriptionState> {
-  const expiresAt = new Date(
-    Date.now() + 30 * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   const state: SubscriptionState = {
     tier,
     active: true,

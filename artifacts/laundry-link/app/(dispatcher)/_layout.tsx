@@ -17,7 +17,7 @@ export default function DispatcherLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: true,
         headerStyle: { backgroundColor: colors.primary },
@@ -85,6 +85,10 @@ export default function DispatcherLayout() {
             ),
         }}
       />
+      {/* Hidden screens reachable via router.push */}
+      <Tabs.Screen name="vehicle-details" options={{ href: null, title: "Vehicle Details" }} />
+      <Tabs.Screen name="service-area" options={{ href: null, title: "Service Area" }} />
+      <Tabs.Screen name="kyc" options={{ href: null, title: "KYC Documents" }} />
     </Tabs>
   );
 }

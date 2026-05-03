@@ -1,0 +1,57 @@
+Push LaundryLink to clean 95%+ production state. Remove ALL demo/mock data, placeholders, slogans, and fake users. Make everything real and fresh from Supabase. No wallets, no commissions, no platform money flow — pure peer-to-peer payments + monthly subscription SaaS for laundromats (Naira for early stage, USD ready for international).
+
+Exact Changes & Fixes Required:
+
+1. Navigation & Gestures:
+   - Enable full gesture navigation (swipe back, back button on Android, iOS swipe).
+   - Fix header back buttons where missing.
+
+2. Customer Menu (All Items Functional):
+   - Saved Addresses: Screen to add/view/edit addresses.
+   - Payment Methods: Peer to peer transfers or cash only (Customer sees account number of laundromat or Rider).
+   - Notifications: List of app notifications.
+   - Help & Support: Simple form or links.
+   - Terms of Service / Privacy Policy: Static screens with text.
+
+3. Payment Flow (Peer-to-Peer, No Platform Money):
+   - Customer pays **pickup fee** first (to rider) when order created/accepted.
+   - When order READY: Customer pays **service fee + delivery fee** (to laundromat).
+   - Use real Paystack (test keys first). No simulated fallback in final version.
+   - Laundromat confirms payment before "Out for Delivery".
+   - Rider gets paid separately (offline or direct transfer) — no in-app wallet.
+
+4. Pricing Logic (Dynamic per Laundromat):
+   - Laundromats set their own prices per service/item (no flat fee).
+   - Customer sees multiple laundromats with their prices during order creation (sorted by distance/price/rating).
+   - Neighborhood-aware: Higher in reserved areas, lower in others (business sets it).
+
+5. Subscription (Naira Early, USD Ready):
+   - Monthly in Naira (e.g. ₦15,000 Starter, ₦35,000 Pro, ₦70,000 Enterprise) — affordable but profitable.
+   - 7-day real trial.
+   - Upgrade/downgrade/cancel options on renewal.
+   - Gate advanced features for unsubscribed businesses.
+
+6. Rider Assignment & Delivery:
+   - Smart matching: Prefer nearby riders to avoid high fuel cost.
+   - When Business accepts: Notify nearby riders with full pickup/delivery info.
+   - Rider accepts → assigned.
+   - Status restricted: No bypassing (Business controls up to READY/PAID, Rider controls pickup → delivered).
+   - Delivery fee calculated by distance or zone (customer sees upfront).
+
+7. UI & Theme:
+   - Brighter, modern light mode default.
+   - Auto system dark mode support.
+   - Clean professional look.
+
+8. Admin & Other:
+   - Admin dashboard for you to track everything (users, orders, revenue, activity).
+   - Remove export reports for now.
+   - All menus functional (Vehicle Details, Service Area, KYC, etc. for Dispatcher/Business).
+
+9. Security & Real Data:
+   - Strong RLS everywhere.
+   - No mock data — fresh from Supabase.
+
+Build aggressively in parallel batches. After finishing, summarize the 95% state, what is lacking, and EAS build commands for real APK. Test full flow and confirm no demo remnants.
+
+Start now.

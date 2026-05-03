@@ -76,10 +76,10 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="create-order"
         options={{
-          title: "Create",
+          title: "New Order",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="plus.circle" tintColor={color} size={22} />
+              <SymbolView name="plus.circle.fill" tintColor={color} size={22} />
             ) : (
               <Feather name="plus-circle" size={22} color={color} />
             ),
@@ -97,6 +97,13 @@ export default function CustomerLayout() {
             ),
         }}
       />
+      {/* Hidden screens reachable via router.push */}
+      <Tabs.Screen name="saved-addresses" options={{ href: null, title: "Saved Addresses" }} />
+      <Tabs.Screen name="payment-methods" options={{ href: null, title: "Payment Methods" }} />
+      <Tabs.Screen name="notifications-screen" options={{ href: null, title: "Notifications" }} />
+      <Tabs.Screen name="help" options={{ href: null, title: "Help & Support" }} />
+      <Tabs.Screen name="terms" options={{ href: null, title: "Terms of Service" }} />
+      <Tabs.Screen name="privacy" options={{ href: null, title: "Privacy Policy" }} />
     </Tabs>
   );
 }

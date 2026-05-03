@@ -1,14 +1,11 @@
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import React, { useMemo, useState } from "react";
 import {
-  Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
+  Pressable,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useOrders } from "@/contexts/OrdersContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useColors } from "@/hooks/useColors";
-import { Order, OrderItem } from "@/types";
+import { OrderItem } from "@/types";
 
 type Range = "today" | "7d" | "30d" | "all";
 
@@ -33,26 +30,6 @@ function startOf(range: Range): Date {
   if (range === "7d") { d.setDate(d.getDate() - 7); return d; }
   if (range === "30d") { d.setDate(d.getDate() - 30); return d; }
   return new Date(0);
-}
-
-function buildCsv(orders: Order[]): string {
-  const header = [
-    "Order Number", "Date", "Customer", "Status",
-    "Services Total", "Delivery Fee", "Total Amount", "Items",
-  ].join(",");
-
-  const rows = orders.map((o) => [
-    o.orderNumber,
-    new Date(o.createdAt).toLocaleDateString(),
-    `"${o.customerName}"`,
-    o.status,
-    o.totalAmount - o.deliveryFee,
-    o.deliveryFee,
-    o.totalAmount,
-    `"${o.items.map((i: OrderItem) => `${i.quantity}x ${i.serviceName}`).join("; ")}"`,
-  ].join(","));
-
-  return [header, ...rows].join("\n");
 }
 
 function Bar({ pct, color }: { pct: number; color: string }) {
@@ -74,7 +51,6 @@ export default function BusinessReports() {
   const { orders, isLoading, refreshOrders } = useOrders();
   const { isSubscribed } = useSubscription();
   const [range, setRange] = useState<Range>("30d");
-  const [exporting, setExporting] = useState(false);
 
   const filtered = useMemo(() => {
     const since = startOf(range);
@@ -86,7 +62,6 @@ export default function BusinessReports() {
   const serviceRevenue = completed.reduce((s, o) => s + (o.totalAmount - o.deliveryFee), 0);
   const deliveryRevenue = completed.reduce((s, o) => s + o.deliveryFee, 0);
 
-  // Revenue by service type
   const byService = useMemo(() => {
     const map: Record<string, { qty: number; revenue: number }> = {};
     completed.forEach((o) => {
@@ -103,37 +78,11 @@ export default function BusinessReports() {
 
   const maxServiceRev = byService[0]?.revenue ?? 1;
 
-  // Status breakdown
   const statusCounts = useMemo(() => {
     const map: Record<string, number> = {};
     filtered.forEach((o) => { map[o.status] = (map[o.status] ?? 0) + 1; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [filtered]);
-
-  const handleExport = async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setExporting(true);
-    try {
-      const csv = buildCsv(filtered);
-      if (Platform.OS === "web") {
-        // Web: trigger download via blob
-        const blob = new Blob([csv], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `laundrylink-report-${range}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        await Share.share({
-          title: `LaundryLink Report — ${range}`,
-          message: csv,
-        });
-      }
-    } finally {
-      setExporting(false);
-    }
-  };
 
   if (!isSubscribed) {
     return (
@@ -142,7 +91,7 @@ export default function BusinessReports() {
           <Feather name="lock" size={28} color={colors.primary} />
           <Text style={[styles.gateTitle, { color: colors.foreground }]}>Reports locked</Text>
           <Text style={[styles.gateSub, { color: colors.mutedForeground }]}>
-            Subscribe to access revenue reports and CSV exports.
+            Subscribe to access revenue analytics and order breakdowns.
           </Text>
         </View>
       </View>
@@ -159,24 +108,15 @@ export default function BusinessReports() {
       {/* Header */}
       <View style={styles.headerRow}>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Reports</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Analytics</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             {filtered.length} orders in period
           </Text>
         </View>
-        <Pressable
-          onPress={handleExport}
-          disabled={exporting || filtered.length === 0}
-          style={[
-            styles.exportBtn,
-            { backgroundColor: colors.primary, borderRadius: colors.radius, opacity: filtered.length === 0 ? 0.5 : 1 },
-          ]}
-        >
-          <Feather name="download" size={15} color={colors.primaryForeground} />
-          <Text style={[styles.exportText, { color: colors.primaryForeground }]}>
-            {exporting ? "Exporting…" : "Export CSV"}
-          </Text>
-        </Pressable>
+        <View style={[styles.liveChip, { backgroundColor: "#05966914" }]}>
+          <View style={[styles.liveDot, { backgroundColor: "#059669" }]} />
+          <Text style={[styles.liveText, { color: "#059669" }]}>Live</Text>
+        </View>
       </View>
 
       {/* Date range filter */}
@@ -213,12 +153,12 @@ export default function BusinessReports() {
             <Text style={[styles.splitLabel, { color: colors.mutedForeground }]}>Services</Text>
             <Text style={[styles.splitValue, { color: colors.foreground }]}>₦{serviceRevenue.toLocaleString()}</Text>
           </View>
-          <View style={styles.splitDivider} />
+          <View style={[styles.splitDivider, { backgroundColor: colors.border }]} />
           <View style={styles.splitItem}>
-            <Text style={[styles.splitLabel, { color: colors.mutedForeground }]}>Delivery fees</Text>
+            <Text style={[styles.splitLabel, { color: colors.mutedForeground }]}>Delivery</Text>
             <Text style={[styles.splitValue, { color: colors.foreground }]}>₦{deliveryRevenue.toLocaleString()}</Text>
           </View>
-          <View style={styles.splitDivider} />
+          <View style={[styles.splitDivider, { backgroundColor: colors.border }]} />
           <View style={styles.splitItem}>
             <Text style={[styles.splitLabel, { color: colors.mutedForeground }]}>Avg order</Text>
             <Text style={[styles.splitValue, { color: colors.foreground }]}>
@@ -299,13 +239,16 @@ function StatCard({
   );
 }
 
+import { Platform } from "react-native";
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   headerRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 },
   title: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 2 },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  exportBtn: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 14, paddingVertical: 11 },
-  exportText: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  liveChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
+  liveDot: { width: 7, height: 7, borderRadius: 4 },
+  liveText: { fontSize: 12, fontFamily: "Inter_700Bold" },
   rangeRow: { flexDirection: "row", padding: 4, gap: 4, marginBottom: 16 },
   rangeBtn: { flex: 1, paddingVertical: 9, alignItems: "center" },
   rangeBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
@@ -319,7 +262,7 @@ const styles = StyleSheet.create({
   splitItem: { flex: 1, alignItems: "center", gap: 4 },
   splitLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
   splitValue: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  splitDivider: { width: 1, height: 36, backgroundColor: "rgba(0,0,0,0.08)" },
+  splitDivider: { width: 1, height: 36 },
   serviceRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   serviceLeft: { width: 110, gap: 2 },
   serviceName: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

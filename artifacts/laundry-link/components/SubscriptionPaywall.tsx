@@ -63,9 +63,9 @@ export function SubscriptionPaywall({ onClose, onSuccess }: Props) {
         contentContainerStyle={[styles.activeContainer, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.activeBadge, { backgroundColor: "#10b98118", borderRadius: colors.radius }]}>
-          <Feather name="check-circle" size={36} color="#10b981" />
-          <Text style={styles.activeTitle}>
+        <View style={[styles.activeBadge, { backgroundColor: "#05966912", borderRadius: colors.radius }]}>
+          <Feather name="check-circle" size={36} color="#059669" />
+          <Text style={[styles.activeTitle, { color: "#059669" }]}>
             {subscription.isTrial ? "Free Trial Active" : "Subscription Active"}
           </Text>
           <Text style={[styles.activePlan, { color: colors.primary }]}>{plan?.name} Plan</Text>
@@ -77,11 +77,42 @@ export function SubscriptionPaywall({ onClose, onSuccess }: Props) {
           </View>
         </View>
 
+        {/* Upgrade options (if on trial or Starter) */}
+        {(subscription.isTrial || subscription.tier === "STARTER") && (
+          <View style={[styles.upgradeCard, { backgroundColor: colors.primary + "0c", borderRadius: colors.radius, borderColor: colors.primary + "20" }]}>
+            <Text style={[styles.upgradeTitle, { color: colors.foreground }]}>Upgrade your plan</Text>
+            {SUBSCRIPTION_PLANS.filter((p) => p.id !== "STARTER").map((plan) => (
+              <Pressable
+                key={plan.id}
+                onPress={() => setSelectedTier(plan.id as SubscriptionTier)}
+                style={[styles.upgradePlanRow, { borderColor: selectedTier === plan.id ? colors.primary : colors.border }]}
+              >
+                <View style={styles.upgradePlanInfo}>
+                  <Text style={[styles.upgradePlanName, { color: colors.foreground }]}>{plan.name}</Text>
+                  <Text style={[styles.upgradePlanPrice, { color: colors.primary }]}>{plan.displayPrice}/mo</Text>
+                </View>
+                {selectedTier === plan.id && <Feather name="check-circle" size={18} color={colors.primary} />}
+              </Pressable>
+            ))}
+            <Pressable
+              onPress={handleSubscribe}
+              disabled={loading}
+              style={[styles.upgradeBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
+            >
+              {loading ? <ActivityIndicator color={colors.primaryForeground} /> : (
+                <Text style={[styles.upgradeBtnText, { color: colors.primaryForeground }]}>
+                  Upgrade to {SUBSCRIPTION_PLANS.find((p) => p.id === selectedTier)?.name}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        )}
+
         <View style={[styles.featureCard, { backgroundColor: colors.card, borderRadius: colors.radius }]}>
-          <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Your included features</Text>
+          <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Your plan features</Text>
           {(plan?.features ?? []).map((f) => (
             <View key={f} style={styles.featureRow}>
-              <Feather name="check" size={13} color="#10b981" />
+              <Feather name="check" size={13} color="#059669" />
               <Text style={[styles.featureText, { color: colors.foreground }]}>{f}</Text>
             </View>
           ))}
@@ -90,12 +121,12 @@ export function SubscriptionPaywall({ onClose, onSuccess }: Props) {
         <Pressable
           onPress={handleCancel}
           disabled={loading}
-          style={[styles.cancelBtn, { borderColor: "#ef4444", borderRadius: colors.radius }]}
+          style={[styles.cancelBtn, { borderColor: colors.destructive, borderRadius: colors.radius }]}
         >
           {loading ? (
-            <ActivityIndicator color="#ef4444" />
+            <ActivityIndicator color={colors.destructive} />
           ) : (
-            <Text style={styles.cancelBtnText}>Cancel subscription</Text>
+            <Text style={[styles.cancelBtnText, { color: colors.destructive }]}>Cancel subscription</Text>
           )}
         </Pressable>
         {onClose && (
@@ -119,10 +150,10 @@ export function SubscriptionPaywall({ onClose, onSuccess }: Props) {
           <Feather name="zap" size={28} color={colors.primaryForeground} />
         </View>
         <Text style={[styles.headline, { color: colors.foreground }]}>
-          Unlock your laundry business
+          Grow your laundry business
         </Text>
         <Text style={[styles.subheadline, { color: colors.mutedForeground }]}>
-          Flat SaaS fee · No commissions · No wallets · Keep 100% of your revenue
+          Flat monthly fee in Naira · No commissions · Keep 100% of your revenue
         </Text>
       </View>
 
@@ -176,7 +207,7 @@ export function SubscriptionPaywall({ onClose, onSuccess }: Props) {
               </Text>
               <View style={styles.priceRow}>
                 <Text style={[styles.planPrice, { color: isSelected ? colors.primaryForeground : colors.primary }]}>
-                  ${plan.monthlyPrice}
+                  {plan.displayPrice}
                 </Text>
                 <Text style={[styles.planPer, { color: isSelected ? colors.primaryForeground + "aa" : colors.mutedForeground }]}>
                   /mo
@@ -186,7 +217,7 @@ export function SubscriptionPaywall({ onClose, onSuccess }: Props) {
             <View style={styles.featureList}>
               {plan.features.map((f) => (
                 <View key={f} style={styles.featureRow}>
-                  <Feather name="check" size={12} color={isSelected ? colors.primaryForeground : "#10b981"} />
+                  <Feather name="check" size={12} color={isSelected ? colors.primaryForeground : "#059669"} />
                   <Text style={[styles.featureText, { color: isSelected ? colors.primaryForeground + "dd" : colors.foreground }]}>
                     {f}
                   </Text>
@@ -211,7 +242,7 @@ export function SubscriptionPaywall({ onClose, onSuccess }: Props) {
             <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
               {mode === "trial"
                 ? `Start 7-Day Free Trial — ${selectedPlan.name}`
-                : `Subscribe — ${selectedPlan.name} · $${selectedPlan.monthlyPrice}/mo`}
+                : `Subscribe — ${selectedPlan.name} · ${selectedPlan.displayPrice}/mo`}
             </Text>
           </>
         )}
@@ -219,7 +250,7 @@ export function SubscriptionPaywall({ onClose, onSuccess }: Props) {
 
       {mode === "trial" && (
         <Text style={[styles.legalText, { color: colors.mutedForeground }]}>
-          No credit card required during trial. Cancel anytime.
+          No card required during trial. Prices in Nigerian Naira. Cancel anytime.
         </Text>
       )}
 
@@ -246,7 +277,7 @@ const styles = StyleSheet.create({
   planHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   planName: { fontSize: 17, fontFamily: "Inter_700Bold" },
   priceRow: { flexDirection: "row", alignItems: "flex-end", gap: 2 },
-  planPrice: { fontSize: 28, fontFamily: "Inter_700Bold" },
+  planPrice: { fontSize: 22, fontFamily: "Inter_700Bold" },
   planPer: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 3 },
   featureList: { gap: 8 },
   featureRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
@@ -257,14 +288,22 @@ const styles = StyleSheet.create({
   ctaText: { fontSize: 15, fontFamily: "Inter_700Bold" },
   legalText: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" },
   activeBadge: { alignItems: "center", gap: 8, paddingVertical: 28 },
-  activeTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#10b981" },
+  activeTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   activePlan: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   daysChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 4 },
   daysText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  upgradeCard: { padding: 16, gap: 12, borderWidth: 1 },
+  upgradeTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  upgradePlanRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, padding: 12 },
+  upgradePlanInfo: { flex: 1 },
+  upgradePlanName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  upgradePlanPrice: { fontSize: 13, fontFamily: "Inter_700Bold", marginTop: 2 },
+  upgradeBtn: { paddingVertical: 14, alignItems: "center" },
+  upgradeBtnText: { fontSize: 14, fontFamily: "Inter_700Bold" },
   featureCard: { padding: 16, gap: 10 },
   sectionLabel: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 4 },
   cancelBtn: { borderWidth: 1.5, paddingVertical: 14, alignItems: "center" },
-  cancelBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#ef4444" },
+  cancelBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   maybeBtn: { alignItems: "center", paddingVertical: 12 },
   maybeBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
 });

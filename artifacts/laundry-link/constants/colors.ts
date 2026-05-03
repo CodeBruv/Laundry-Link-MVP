@@ -1,72 +1,72 @@
 const colors = {
   light: {
-    text: "#1c1c1c",
-    tint: "#092d52",
+    text: "#111827",
+    tint: "#0a2342",
 
-    background: "#f5f9ff",
-    foreground: "#1c1c1c",
+    background: "#f7f9fc",
+    foreground: "#111827",
 
     card: "#ffffff",
-    cardForeground: "#1c1c1c",
+    cardForeground: "#111827",
 
-    primary: "#092d52",
+    primary: "#0a2342",
     primaryForeground: "#ffffff",
 
-    secondary: "#e8eef6",
-    secondaryForeground: "#092d52",
+    secondary: "#e8eef8",
+    secondaryForeground: "#0a2342",
 
-    muted: "#e8eef6",
-    mutedForeground: "#6b7c93",
+    muted: "#eef1f8",
+    mutedForeground: "#64748b",
 
-    accent: "#1e40af",
+    accent: "#1d4ed8",
     accentForeground: "#ffffff",
 
-    destructive: "#ef4444",
+    destructive: "#dc2626",
     destructiveForeground: "#ffffff",
 
-    success: "#10b981",
+    success: "#059669",
     successForeground: "#ffffff",
 
-    warning: "#f59e0b",
-    warningForeground: "#1c1c1c",
+    warning: "#d97706",
+    warningForeground: "#ffffff",
 
-    border: "#d1dbe8",
-    input: "#d1dbe8",
+    border: "#dde3ef",
+    input: "#dde3ef",
   },
 
   dark: {
-    text: "#f0f4f8",
-    tint: "#6ba3d6",
+    text: "#f1f5f9",
+    tint: "#7eb3e0",
 
-    background: "#0a1929",
-    foreground: "#f0f4f8",
+    background: "#09162a",
+    foreground: "#f1f5f9",
 
-    card: "#132f4c",
-    cardForeground: "#f0f4f8",
+    card: "#102035",
+    cardForeground: "#f1f5f9",
 
-    primary: "#6ba3d6",
-    primaryForeground: "#0a1929",
+    primary: "#7eb3e0",
+    primaryForeground: "#09162a",
 
-    secondary: "#1a3a5c",
-    secondaryForeground: "#b0cde4",
+    secondary: "#172d4a",
+    secondaryForeground: "#9dc3e0",
 
-    muted: "#1a3a5c",
-    mutedForeground: "#8aa4c0",
+    muted: "#172d4a",
+    mutedForeground: "#7b98b8",
 
-    accent: "#5b8def",
+    accent: "#4b82f0",
     accentForeground: "#ffffff",
 
     destructive: "#f87171",
     destructiveForeground: "#1c1c1c",
 
     success: "#34d399",
-    successForeground: "#1c1c1c",
+    successForeground: "#0f2a1d",
 
     warning: "#fbbf24",
     warningForeground: "#1c1c1c",
 
-    border: "#1e3a5f",
-    input: "#1e3a5f",
+    border: "#1c3350",
+    input: "#1c3350",
   },
 
   radius: 12,
