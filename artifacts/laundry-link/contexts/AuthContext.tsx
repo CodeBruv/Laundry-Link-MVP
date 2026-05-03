@@ -14,14 +14,6 @@ import {
   supabase,
   testSupabaseConnection,
 } from "@/lib/supabase";
-import {
-  OWNER_DISPLAY,
-  OWNER_EMAIL,
-  OWNER_SESSION_KEY,
-  OWNER_SESSION_VAL,
-  isOwnerEmail,
-  verifyOwnerPassword,
-} from "@/lib/ownerAuth";
 import { UserRole } from "@/types";
 
 export type ConnectionStatus =
@@ -49,8 +41,6 @@ interface AuthContextType {
     password: string,
   ) => Promise<{ error: string | null }>;
   signInDemo: (fullName: string, role: UserRole) => Promise<void>;
-  /** Hidden quick-access: activates the owner Super Admin session. */
-  signInAsOwner: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -64,7 +54,6 @@ const AuthContext = createContext<AuthContextType>({
   signUp: async () => ({ error: null }),
   signIn: async () => ({ error: null }),
   signInDemo: async () => {},
-  signInAsOwner: async () => {},
   signOut: async () => {},
 });
 
@@ -109,38 +98,6 @@ function makeDemoUser(fullName: string, email: string, role: UserRole): User {
   } as User;
 }
 
-/**
- * Creates the owner User object.
- * Includes admin_tier: "SUPER" so useAdminAccess() recognises full access
- * without requiring the passphrase to be entered again.
- */
-function makeOwnerUser(): User {
-  return {
-    id: "owner_codebruv",
-    email: OWNER_EMAIL,
-    app_metadata: { provider: "local" },
-    user_metadata: {
-      full_name: OWNER_DISPLAY,
-      role: "ADMIN" as UserRole,
-      admin_tier: "SUPER",
-    },
-    aud: "authenticated",
-    created_at: "2024-01-01T00:00:00.000Z",
-  } as User;
-}
-
-async function persistOwnerSession() {
-  const ownerUser = makeOwnerUser();
-  await Promise.all([
-    AsyncStorage.setItem("demo_user", JSON.stringify(ownerUser)),
-    AsyncStorage.setItem("demo_role", "ADMIN"),
-    // Mark Super Admin active for useAdminAccess()
-    AsyncStorage.setItem(OWNER_SESSION_KEY, OWNER_SESSION_VAL),
-    AsyncStorage.setItem("admin_super_session", "1"),
-  ]);
-  return ownerUser;
-}
-
 // Wraps a Supabase call and logs + re-surfaces the actual error message.
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -162,30 +119,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isSupabaseConfigured ? "checking" : "unconfigured",
   );
 
+  // isDemo is TRUE only when keys are absent — NOT when the probe timed out.
+  // This ensures signIn/signUp always attempt real Supabase auth when configured.
   const isDemo = !isSupabaseConfigured;
 
   useEffect(() => {
     let authSub: { unsubscribe: () => void } | null = null;
 
     const init = async () => {
-      // ── Check for persisted owner session first (highest priority) ─────
-      const ownerActive = await AsyncStorage.getItem(OWNER_SESSION_KEY).catch(() => null);
-      if (ownerActive === OWNER_SESSION_VAL) {
-        const ownerUser = makeOwnerUser();
-        setUser(ownerUser);
-        setRole("ADMIN");
-        setIsLoading(false);
-        // Still run probe for banner status
-        if (isSupabaseConfigured) {
-          testSupabaseConnection().then((ok) => {
-            setConnectionStatus(ok ? "connected" : "unreachable");
-          });
-        } else {
-          setConnectionStatus("unconfigured");
-        }
-        return;
-      }
-
       // ── No keys configured → pure demo mode ───────────────────────────
       if (!isSupabaseConfigured) {
         setConnectionStatus("unconfigured");
@@ -203,7 +144,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // ── Keys present → restore Supabase session immediately ───────────
+      // ── Keys present → restore session immediately (no probe wait) ─────
+      // Session is stored in AsyncStorage by the Supabase client itself.
+      // We do NOT wait for the probe before restoring — this is what allows
+      // instant login on app re-open even with a slow mobile connection.
       const sessionResult = await safe(
         () => supabase.auth.getSession(),
         { data: { session: null }, error: null },
@@ -215,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole((s.user.user_metadata?.role as UserRole) || "CUSTOMER");
       }
 
+      // Register auth state listener — fires on sign-in, sign-out, token refresh
       const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
         console.log("[LaundryLink] Auth state changed:", _event);
         setSession(newSession);
@@ -229,6 +174,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setIsLoading(false);
 
+      // ── Run connection probe in the background (informational only) ────
+      // This sets connectionStatus for the UI banner but does NOT block auth.
       testSupabaseConnection().then((reachable) => {
         setConnectionStatus(reachable ? "connected" : "unreachable");
         console.log(`[LaundryLink] Connection status → ${reachable ? "connected" : "unreachable"}`);
@@ -241,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useProtectedRoute(user, role, isLoading);
 
-  // ── Demo sign-in ───────────────────────────────────────────────────────
+  // ── Demo sign-in (role buttons on login screen) ────────────────────────
   const signInDemo = useCallback(async (fullName: string, demoRole: UserRole) => {
     const demoUser = makeDemoUser(
       fullName,
@@ -254,17 +201,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem("demo_user", JSON.stringify(demoUser));
   }, []);
 
-  // ── Owner quick-access (hidden trigger — no password path) ─────────────
-  // This is the long-press activation path. It bypasses password entry
-  // because the trigger itself (gesture + location) is the auth factor.
-  // The owner session is persisted so it survives app restarts.
-  const signInAsOwner = useCallback(async () => {
-    console.log("[LaundryLink] Owner session activated");
-    const ownerUser = await persistOwnerSession();
-    setUser(ownerUser);
-    setRole("ADMIN");
-  }, []);
-
   // ── Sign up ────────────────────────────────────────────────────────────
   const signUp = useCallback(async (
     email: string,
@@ -272,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fullName: string,
     selectedRole: UserRole,
   ) => {
+    // Pure demo mode — keys not configured
     if (isDemo) {
       const demoUser = makeDemoUser(fullName, email, selectedRole);
       setUser(demoUser);
@@ -281,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: null };
     }
 
+    // Always try real Supabase when configured
     const result = await safe(
       () =>
         supabase.auth.signUp({
@@ -295,6 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     if (result.error) return { error: result.error.message };
 
+    // Persist role in user metadata
     await safe(
       () => supabase.auth.updateUser({ data: { full_name: fullName, role: selectedRole } }),
       { data: { user: null as any }, error: null },
@@ -307,24 +246,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [isDemo]);
 
   // ── Sign in ────────────────────────────────────────────────────────────
+  // CRITICAL: Always tries real Supabase auth when configured.
+  // Never silently falls to demo if keys are present — shows the real error instead.
   const signIn = useCallback(async (email: string, password: string) => {
-    // ── Owner account intercept ─────────────────────────────────────────
-    // The owner email uses a non-existent domain so Supabase will never
-    // have this account. We validate against the stored digest instead.
-    if (isOwnerEmail(email)) {
-      const valid = await verifyOwnerPassword(password);
-      if (!valid) {
-        console.log("[LaundryLink] Owner login: invalid credentials");
-        return { error: "Invalid email or password." };
-      }
-      console.log("[LaundryLink] Owner login: credentials verified ✓");
-      const ownerUser = await persistOwnerSession();
-      setUser(ownerUser);
-      setRole("ADMIN");
-      return { error: null };
-    }
-
-    // ── Pure demo mode ─────────────────────────────────────────────────
+    // Pure demo mode — keys not configured
     if (isDemo) {
       const savedUser = await AsyncStorage.getItem("demo_user").catch(() => null);
       if (savedUser) {
@@ -343,8 +268,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: null };
     }
 
-    // ── Real Supabase auth ─────────────────────────────────────────────
-    console.log("[LaundryLink] signIn → supabase.auth.signInWithPassword");
+    // Real Supabase auth — always attempted when keys are configured
+    console.log("[LaundryLink] signIn → calling supabase.auth.signInWithPassword");
     let result: { data: { user: User | null; session: Session | null }; error: { message: string } | null };
     try {
       result = await supabase.auth.signInWithPassword({ email, password });
@@ -370,12 +295,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Sign out ───────────────────────────────────────────────────────────
   const signOut = useCallback(async () => {
-    // Clear owner session markers first
-    await AsyncStorage.multiRemove([
-      OWNER_SESSION_KEY,
-      "admin_super_session",
-    ]).catch(() => {});
-
     if (isSupabaseConfigured) {
       await safe(() => supabase.auth.signOut(), undefined);
     }
@@ -397,7 +316,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signIn,
         signInDemo,
-        signInAsOwner,
         signOut,
       }}
     >

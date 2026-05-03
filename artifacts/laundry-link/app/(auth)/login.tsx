@@ -1,10 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import { Link } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Platform,
   Pressable,
   StyleSheet,
@@ -12,42 +11,31 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { UserRole } from "@/types";
 
-const DEMO_ROLES: {
-  role: UserRole;
-  label: string;
-  icon: keyof typeof Feather.glyphMap;
-  color: string;
-}[] = [
-  { role: "CUSTOMER",   label: "Customer",   icon: "user",   color: "#3b82f6" },
-  { role: "BUSINESS",   label: "Business",   icon: "home",   color: "#8b5cf6" },
-  { role: "DISPATCHER", label: "Dispatcher", icon: "truck",  color: "#f97316" },
-  { role: "ADMIN",      label: "Admin",      icon: "shield", color: "#ef4444" },
+const DEMO_ROLES: { role: UserRole; label: string; icon: keyof typeof Feather.glyphMap; color: string }[] = [
+  { role: "CUSTOMER",   label: "Customer",   icon: "user",          color: "#3b82f6" },
+  { role: "BUSINESS",   label: "Business",   icon: "home",          color: "#8b5cf6" },
+  { role: "DISPATCHER", label: "Dispatcher", icon: "truck",         color: "#f97316" },
+  { role: "ADMIN",      label: "Admin",      icon: "shield",        color: "#ef4444" },
 ];
 
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const router  = useRouter();
-  const { signIn, signInDemo, signInAsOwner, isDemo, connectionStatus } = useAuth();
+  const { signIn, signInDemo, isDemo, connectionStatus } = useAuth();
 
-  const [email,        setEmail]        = useState("");
-  const [password,     setPassword]     = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error,        setError]        = useState("");
-  const [isLoading,    setIsLoading]    = useState(false);
-  const [ownerLoading, setOwnerLoading] = useState(false);
-  const [demoLoading,  setDemoLoading]  = useState<UserRole | null>(null);
-
-  // Track long-press progress for the hidden trigger
-  const signUpPressCount = useRef(0);
-  const signUpOpacity    = useRef(new Animated.Value(1)).current;
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState<UserRole | null>(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -67,29 +55,6 @@ export default function LoginScreen() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await signInDemo(`${label} (Demo)`, role);
     setDemoLoading(null);
-  };
-
-  // ── Hidden owner quick-access ────────────────────────────────────────────
-  // Triggered by long-pressing the "Sign Up" text. The gesture is the auth
-  // factor — no password is shown or entered. The session is persisted in
-  // AsyncStorage so the owner stays logged in across restarts.
-  const handleSignUpLongPress = async () => {
-    if (ownerLoading) return;
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    }
-    // Brief opacity pulse — only visible if you're looking for it
-    Animated.sequence([
-      Animated.timing(signUpOpacity, { toValue: 0.3, duration: 80, useNativeDriver: false }),
-      Animated.timing(signUpOpacity, { toValue: 1,   duration: 80, useNativeDriver: false }),
-    ]).start();
-
-    setOwnerLoading(true);
-    setError("");
-    // Small deliberate delay — feels intentional, prevents accidental double-fire
-    await new Promise((r) => setTimeout(r, 400));
-    await signInAsOwner();
-    setOwnerLoading(false);
   };
 
   const showDemoSection = isDemo || connectionStatus === "unreachable" || connectionStatus === "unconfigured";
@@ -167,6 +132,7 @@ export default function LoginScreen() {
           </View>
         )}
 
+        {/* Connection status hint */}
         {connectionStatus === "unreachable" && (
           <View style={[styles.warningBox, { backgroundColor: "#f59e0b18", borderRadius: colors.radius, borderColor: "#f59e0b40" }]}>
             <Feather name="wifi-off" size={14} color="#f59e0b" />
@@ -223,25 +189,13 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
-        {/* Footer row — "Sign Up" carries the hidden long-press trigger */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: colors.mutedForeground }]}>Don't have an account? </Text>
-
-          {ownerLoading ? (
-            // While owner session is activating, show a subtle spinner in-place
-            <ActivityIndicator size="small" color={colors.accent} />
-          ) : (
-            <Animated.View style={{ opacity: signUpOpacity }}>
-              <Pressable
-                onPress={() => router.push("/(auth)/signup")}
-                onLongPress={handleSignUpLongPress}
-                delayLongPress={600}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <Text style={[styles.linkText, { color: colors.accent }]}>Sign Up</Text>
-              </Pressable>
-            </Animated.View>
-          )}
+          <Link href="/(auth)/signup" asChild>
+            <Pressable>
+              <Text style={[styles.linkText, { color: colors.accent }]}>Sign Up</Text>
+            </Pressable>
+          </Link>
         </View>
       </View>
     </KeyboardAwareScrollViewCompat>
@@ -277,7 +231,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   btn: { paddingVertical: 16, alignItems: "center", marginTop: 8 },
   btnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  footer: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 12 },
+  footer: { flexDirection: "row", justifyContent: "center", marginTop: 12 },
   footerText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   linkText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });
