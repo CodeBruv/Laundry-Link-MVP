@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   Alert,
@@ -21,21 +22,24 @@ import { daysLeft } from "@/lib/subscription";
 
 const APP_URL = "https://laundrylink.app";
 
-const MENU_ITEMS = [
-  { icon: "settings" as const, label: "Business Settings" },
-  { icon: "users" as const, label: "Staff Management" },
-  { icon: "map-pin" as const, label: "Business Location" },
-  { icon: "clock" as const, label: "Operating Hours" },
-  { icon: "bell" as const, label: "Notifications" },
-  { icon: "help-circle" as const, label: "Help & Support" },
-];
+interface MenuItem {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  route?: string;
+  action?: () => void;
+}
 
 export default function BusinessProfile() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user, signOut } = useAuth();
   const { subscription, isSubscribed } = useSubscription();
   const days = daysLeft(subscription);
+
+  const handleContact = () => {
+    Linking.openURL("mailto:hello@laundrylink.app?subject=LaundryLink Business Support");
+  };
 
   const handleSignOut = () => {
     if (Platform.OS === "web") { signOut(); return; }
@@ -57,9 +61,27 @@ export default function BusinessProfile() {
     } catch { /* cancelled */ }
   };
 
-  const handleContact = () => {
-    Linking.openURL("mailto:hello@laundrylink.app?subject=LaundryLink Business Support");
+  const handleMenuPress = (item: MenuItem) => {
+    if (Platform.OS !== "web") Haptics.selectionAsync();
+    if (item.action) { item.action(); return; }
+    if (item.route) router.push(item.route as any);
   };
+
+  const MENU_ITEMS: MenuItem[] = [
+    { icon: "tag",          label: "Manage Services",    route: "/(business)/services" },
+    { icon: "credit-card",  label: "Subscription & Plan", route: "/(business)/subscription" },
+    { icon: "trending-up",  label: "Analytics & Reports", route: "/(business)/reports" },
+    { icon: "help-circle",  label: "Help & Support",      action: handleContact },
+    { icon: "file-text",    label: "Terms of Service",    route: "/(customer)/terms" },
+    { icon: "shield",       label: "Privacy Policy",      route: "/(customer)/privacy" },
+  ];
+
+  const initials = (user?.user_metadata?.full_name as string | undefined)
+    ?.split(" ")
+    .map((w: string) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "B";
 
   return (
     <ScrollView
@@ -70,9 +92,7 @@ export default function BusinessProfile() {
       {/* Avatar card */}
       <View style={[styles.profileCard, { backgroundColor: colors.card }]}>
         <View style={[styles.avatar, { backgroundColor: colors.primary, borderRadius: 30 }]}>
-          <Text style={[styles.avatarText, { color: colors.primaryForeground }]}>
-            {user?.user_metadata?.full_name?.[0]?.toUpperCase() || "B"}
-          </Text>
+          <Text style={[styles.avatarText, { color: colors.primaryForeground }]}>{initials}</Text>
         </View>
         <Text style={[styles.name, { color: colors.foreground }]}>
           {user?.user_metadata?.full_name || "Business"}
@@ -85,15 +105,22 @@ export default function BusinessProfile() {
 
       {/* Subscription status */}
       {isSubscribed && (
-        <View style={[styles.subCard, { backgroundColor: "#10b98112", borderColor: "#10b98130", borderRadius: colors.radius, marginHorizontal: 20, marginTop: 12 }]}>
+        <Pressable
+          onPress={() => router.push("/(business)/subscription" as any)}
+          style={[styles.subCard, {
+            backgroundColor: "#10b98112", borderColor: "#10b98130",
+            borderRadius: colors.radius, marginHorizontal: 20, marginTop: 12,
+          }]}
+        >
           <Feather name="check-circle" size={16} color="#10b981" />
           <View style={{ flex: 1 }}>
             <Text style={styles.subTitle}>
               {subscription.isTrial ? "Free Trial" : subscription.tier} · Active
             </Text>
-            <Text style={styles.subSub}>{days} days remaining on current period</Text>
+            <Text style={styles.subSub}>{days} days remaining · tap to manage</Text>
           </View>
-        </View>
+          <Feather name="chevron-right" size={14} color="#10b981" />
+        </Pressable>
       )}
 
       {/* Share app banner */}
@@ -115,33 +142,27 @@ export default function BusinessProfile() {
 
       {/* Menu */}
       <View style={[styles.menuSection, { marginTop: 12 }]}>
-        {MENU_ITEMS.map((item, i) => {
-          const isLast = i === MENU_ITEMS.length - 1;
-          return (
-            <Pressable
-              key={item.label}
-              onPress={item.label === "Help & Support" ? handleContact : undefined}
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: colors.card,
-                  borderBottomWidth: !isLast ? 1 : 0,
-                  borderBottomColor: colors.border,
-                },
-              ]}
-            >
-              <Feather name={item.icon} size={20} color={colors.primary} />
-              <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
-              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-            </Pressable>
-          );
-        })}
+        {MENU_ITEMS.map((item, i) => (
+          <Pressable
+            key={item.label}
+            onPress={() => handleMenuPress(item)}
+            style={({ pressed }) => [
+              styles.menuItem,
+              {
+                backgroundColor: pressed ? colors.muted : colors.card,
+                borderBottomWidth: i < MENU_ITEMS.length - 1 ? 1 : 0,
+                borderBottomColor: colors.border,
+              },
+            ]}
+          >
+            <View style={[styles.menuIconWrap, { backgroundColor: colors.primary + "12" }]}>
+              <Feather name={item.icon} size={18} color={colors.primary} />
+            </View>
+            <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+        ))}
       </View>
-
-      {/* App version */}
-      <Text style={[styles.versionText, { color: colors.mutedForeground }]}>
-        LaundryLink v1.0.0 · MVP Demo Build
-      </Text>
 
       <Pressable
         onPress={handleSignOut}
@@ -150,6 +171,8 @@ export default function BusinessProfile() {
         <Feather name="log-out" size={18} color={colors.destructive} />
         <Text style={[styles.signOutText, { color: colors.destructive }]}>Sign Out</Text>
       </Pressable>
+
+      <Text style={[styles.version, { color: colors.mutedForeground }]}>LaundryLink v1.0 · Nigeria 🇳🇬</Text>
     </ScrollView>
   );
 }
@@ -173,8 +196,9 @@ const styles = StyleSheet.create({
   shareSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   menuSection: {},
   menuItem: { flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20, gap: 14 },
+  menuIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   menuLabel: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
-  versionText: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 20, marginBottom: 4 },
-  signOutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 20, marginTop: 8, paddingVertical: 14 },
+  signOutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 20, marginTop: 20, paddingVertical: 14 },
   signOutText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  version: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 20, marginBottom: 8 },
 });

@@ -45,7 +45,7 @@ const PLATFORM_SETTINGS = [
   { icon: "globe"      as const, label: "Regions",               desc: "Manage supported service regions" },
   { icon: "sliders"    as const, label: "Service Templates",     desc: "Default laundry service definitions" },
   { icon: "database"   as const, label: "Data Management",       desc: "Backups, exports, and retention" },
-  { icon: "credit-card"as const, label: "Payment Config",        desc: "Paystack keys and payout rules" },
+  { icon: "smartphone"  as const, label: "Payment Config",        desc: "P2P payment confirmation and bank verification rules" },
 ];
 
 export default function AdminSettings() {

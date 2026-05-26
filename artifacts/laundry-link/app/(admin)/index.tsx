@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useMemo } from "react";
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,11 +18,19 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdminDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { orders, isLoading } = useOrders();
   const { isSuperAdmin, adminTier } = useAdminAccess();
 
   const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(" ")[0] || "Admin";
+
+  const handleSignOut = () => {
+    if (Platform.OS === "web") { signOut(); return; }
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Sign Out", style: "destructive", onPress: signOut },
+    ]);
+  };
 
   const stats = useMemo(() => {
     const active   = orders.filter((o) => !["DELIVERED","CANCELLED"].includes(o.status)).length;
@@ -66,8 +74,17 @@ export default function AdminDashboard() {
             <Text style={[styles.heroTitle, { color: colors.foreground }]}>Admin Dashboard</Text>
             <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>LaundryLink · Real-time platform overview</Text>
           </View>
-          <View style={[styles.heroIcon, { backgroundColor: colors.primary + "12" }]}>
-            <Feather name="shield" size={24} color={colors.primary} />
+            <View style={{ alignItems: "center", gap: 8 }}>
+            <View style={[styles.heroIcon, { backgroundColor: colors.primary + "12" }]}>
+              <Feather name="shield" size={24} color={colors.primary} />
+            </View>
+            <Pressable
+              onPress={handleSignOut}
+              style={[styles.signOutBtn, { borderColor: "#ef444430" }]}
+            >
+              <Feather name="log-out" size={13} color="#ef4444" />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -206,6 +223,8 @@ const styles = StyleSheet.create({
   heroTitle: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 2 },
   heroSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
   heroIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  signOutBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+  signOutText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#ef4444" },
   badgeRow: { flexDirection: "row" },
   tierBadge: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
   tierText: { fontSize: 12, fontFamily: "Inter_700Bold" },
