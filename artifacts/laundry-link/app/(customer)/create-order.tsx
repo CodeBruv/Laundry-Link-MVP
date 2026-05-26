@@ -131,10 +131,14 @@ export default function CreateOrderScreen() {
     setQuantities({});
   };
 
+  const navBarHeight = 72;
+  const navBarBottom = insets.bottom + (Platform.OS === "web" ? 84 : 90);
+
   return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 90) }}
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: 20, paddingBottom: navBarHeight + navBarBottom + 8 }}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
@@ -434,34 +438,45 @@ export default function CreateOrderScreen() {
         </View>
       )}
 
-      {/* Navigation */}
-      <View style={styles.navRow}>
-        {step > 0 && (
-          <Pressable
-            onPress={() => setStep(step - 1)}
-            style={[styles.backButton, { borderColor: colors.border, borderRadius: colors.radius }]}
-          >
-            <Text style={[styles.backButtonText, { color: colors.foreground }]}>Back</Text>
-          </Pressable>
-        )}
-        <Pressable
-          onPress={() => (step === STEPS.length - 1 ? submit() : setStep(step + 1))}
-          disabled={!canContinue() || isSubmitting}
-          style={[
-            styles.primaryButton,
-            { backgroundColor: colors.primary, borderRadius: colors.radius, opacity: !canContinue() || isSubmitting ? 0.6 : 1 },
-          ]}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color={colors.primaryForeground} />
-          ) : (
-            <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>
-              {step === STEPS.length - 1 ? "Place Order" : "Continue"}
-            </Text>
-          )}
-        </Pressable>
-      </View>
     </ScrollView>
+
+    {/* Sticky nav footer — always visible above tab bar */}
+    <View style={[
+      styles.navRow,
+      {
+        backgroundColor: colors.background,
+        borderTopColor: colors.border,
+        paddingBottom: navBarBottom,
+        paddingHorizontal: 20,
+        paddingTop: 12,
+      },
+    ]}>
+      {step > 0 && (
+        <Pressable
+          onPress={() => setStep(step - 1)}
+          style={[styles.backButton, { borderColor: colors.border, borderRadius: colors.radius }]}
+        >
+          <Text style={[styles.backButtonText, { color: colors.foreground }]}>Back</Text>
+        </Pressable>
+      )}
+      <Pressable
+        onPress={() => (step === STEPS.length - 1 ? submit() : setStep(step + 1))}
+        disabled={!canContinue() || isSubmitting}
+        style={[
+          styles.primaryButton,
+          { backgroundColor: colors.primary, borderRadius: colors.radius, opacity: !canContinue() || isSubmitting ? 0.6 : 1 },
+        ]}
+      >
+        {isSubmitting ? (
+          <ActivityIndicator color={colors.primaryForeground} />
+        ) : (
+          <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>
+            {step === STEPS.length - 1 ? "Place Order" : "Continue"}
+          </Text>
+        )}
+      </Pressable>
+    </View>
+    </View>
   );
 }
 
@@ -529,7 +544,7 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 14, fontFamily: "Inter_700Bold" },
   totalNote: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
   totalValue: { fontSize: 26, fontFamily: "Inter_700Bold" },
-  navRow: { flexDirection: "row", gap: 12, marginTop: 24 },
+  navRow: { flexDirection: "row", gap: 12, borderTopWidth: 1 },
   backButton: { flex: 0.35, borderWidth: 1, paddingVertical: 15, alignItems: "center" },
   backButtonText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   primaryButton: { flex: 1, paddingVertical: 16, alignItems: "center" },
