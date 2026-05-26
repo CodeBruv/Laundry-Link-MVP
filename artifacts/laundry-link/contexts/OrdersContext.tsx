@@ -130,8 +130,10 @@ async function writeLocalHistory(history: OrderStatusHistory[]) {
 
 function filterOrdersForRole(allOrders: Order[], role: UserRole | null, userId?: string) {
   if (role === "CUSTOMER") return allOrders.filter((o) => o.customerId === userId);
-  if (role === "BUSINESS") return allOrders.filter((o) => o.businessId === DEFAULT_BUSINESS_ID);
-  if (role === "DISPATCHER") return allOrders.filter((o) => !!o.assignedDriverName);
+  // Business sees all orders — in production each business has their own Supabase RLS policy
+  if (role === "BUSINESS") return allOrders;
+  // Dispatcher sees all assigned orders (assignment pool model)
+  if (role === "DISPATCHER") return allOrders.filter((o) => !!o.dispatcherId || !!o.assignedDriverName);
   return allOrders;
 }
 
@@ -151,7 +153,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       if (isSupabaseConfigured && !isDemo) {
         let query = supabase.from("orders").select("*").order("created_at", { ascending: false });
         if (role === "CUSTOMER") query = query.eq("customer_id", user.id);
-        if (role === "BUSINESS") query = query.eq("business_id", DEFAULT_BUSINESS_ID);
+        // BUSINESS: no filter — in production Supabase RLS handles per-business isolation
         if (role === "DISPATCHER") query = query.not("assigned_driver_id", "is", null);
 
         const { data, error } = await query;
@@ -326,35 +328,29 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       };
 
       if (isSupabaseConfigured && !isDemo) {
-        const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
-        if (!error) {
-          await supabase.from("order_status_history").insert({
-            order_id: orderId,
-            status,
-            changed_by: user.id,
-            note: nextHistory.note,
-          });
-          await refreshOrders();
-          if (status === "READY") {
-            notifyOrderReady(orderNumber);
-          } else {
-            notifyStatusChange(orderNumber, status, role ?? "CUSTOMER");
-          }
-          return { error: null };
-        }
+        const { error } = await supabase.from("orders").update({ status, updated_at: now }).eq("id", orderId);
+        if (error) return { error: error.message };
+        await supabase.from("order_status_history").insert({
+          order_id: orderId,
+          status,
+          changed_by: user.id,
+          note: nextHistory.note,
+        });
+        await refreshOrders();
+        if (status === "READY") notifyOrderReady(orderNumber);
+        else notifyStatusChange(orderNumber, status, role ?? "CUSTOMER");
+        return { error: null };
       }
 
+      // Local-only path (Supabase not configured)
       const local = await readLocalOrders();
       const updated = local.map((o) => o.id === orderId ? { ...o, status, updatedAt: now } : o);
       const localH = await readLocalHistory();
       await writeLocalOrders(updated);
       await writeLocalHistory([...localH, nextHistory]);
       await refreshOrders();
-      if (status === "READY") {
-        notifyOrderReady(orderNumber);
-      } else {
-        notifyStatusChange(orderNumber, status, role ?? "CUSTOMER");
-      }
+      if (status === "READY") notifyOrderReady(orderNumber);
+      else notifyStatusChange(orderNumber, status, role ?? "CUSTOMER");
       return { error: null };
     },
     [user, isDemo, refreshOrders, orders, role],

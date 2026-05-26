@@ -52,6 +52,16 @@ export default function BusinessOrders() {
   const router = useRouter();
   const { orders, isLoading, refreshOrders, updateOrderStatus } = useOrders();
   const { isSubscribed } = useSubscription();
+  const [updatingId, setUpdatingId] = React.useState<string | null>(null);
+  const [statusError, setStatusError] = React.useState<string | null>(null);
+
+  const handleStatusUpdate = async (orderId: string, status: OrderStatus, label: string) => {
+    setUpdatingId(orderId);
+    setStatusError(null);
+    const result = await updateOrderStatus(orderId, status, `Business: ${label}`);
+    setUpdatingId(null);
+    if (result.error) setStatusError(result.error);
+  };
 
   if (!isSubscribed) {
     return (
@@ -86,6 +96,12 @@ export default function BusinessOrders() {
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             Accept orders, track progress, and confirm payments before dispatching.
           </Text>
+          {statusError && (
+            <View style={[styles.errorBanner, { backgroundColor: "#ef444412", borderRadius: colors.radius }]}>
+              <Feather name="alert-circle" size={14} color="#ef4444" />
+              <Text style={styles.errorText}>{statusError}</Text>
+            </View>
+          )}
 
           {orders.map((order) => {
             const next = BUSINESS_NEXT[order.status];
@@ -161,9 +177,10 @@ export default function BusinessOrders() {
                         <Pressable
                           onPress={(e) => {
                             e.stopPropagation?.();
-                            updateOrderStatus(order.id, "CANCELLED", "Business rejected order");
+                            handleStatusUpdate(order.id, "CANCELLED", "Reject Order");
                           }}
-                          style={[styles.rejectButton, { borderRadius: colors.radius }]}
+                          disabled={updatingId === order.id}
+                          style={[styles.rejectButton, { borderRadius: colors.radius, opacity: updatingId === order.id ? 0.5 : 1 }]}
                         >
                           <Text style={styles.rejectText}>Reject</Text>
                         </Pressable>
@@ -172,12 +189,13 @@ export default function BusinessOrders() {
                         <Pressable
                           onPress={(e) => {
                             e.stopPropagation?.();
-                            updateOrderStatus(order.id, next.status, `Business: ${next.label}`);
+                            handleStatusUpdate(order.id, next.status, next.label);
                           }}
-                          style={[styles.nextButton, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
+                          disabled={updatingId === order.id}
+                          style={[styles.nextButton, { backgroundColor: colors.primary, borderRadius: colors.radius, opacity: updatingId === order.id ? 0.6 : 1 }]}
                         >
                           <Text style={[styles.nextButtonText, { color: colors.primaryForeground }]}>
-                            {next.label}
+                            {updatingId === order.id ? "Updating…" : next.label}
                           </Text>
                         </Pressable>
                       )}
@@ -235,4 +253,6 @@ const styles = StyleSheet.create({
   nextButtonText: { fontSize: 13, fontFamily: "Inter_700Bold" },
   terminalBadge: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 9, paddingHorizontal: 12 },
   terminalText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  errorBanner: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, marginBottom: 12 },
+  errorText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: "#ef4444" },
 });

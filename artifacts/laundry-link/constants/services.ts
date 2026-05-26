@@ -1,7 +1,8 @@
 import { LaundryService } from "@/types";
 
-export const DEFAULT_BUSINESS_ID = "fresh-clean-jos";
-export const DEFAULT_BUSINESS_NAME = "Fresh & Clean Laundry Jos";
+// Must match the laundromat ID in constants/laundromats.ts for the default business
+export const DEFAULT_BUSINESS_ID = "freshclean-jos";
+export const DEFAULT_BUSINESS_NAME = "FreshClean Laundry";
 
 export const LAUNDRY_SERVICES: LaundryService[] = [
   {
@@ -9,7 +10,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
     businessId: DEFAULT_BUSINESS_ID,
     name: "Shirt Wash & Iron",
     description: "Wash, dry, and iron shirts",
-    pricePerUnit: 600,
+    pricePerUnit: 500,
     unit: "shirt",
     isActive: true,
   },
@@ -18,7 +19,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
     businessId: DEFAULT_BUSINESS_ID,
     name: "Trouser Press",
     description: "Steam press for trousers",
-    pricePerUnit: 900,
+    pricePerUnit: 800,
     unit: "trouser",
     isActive: true,
   },
@@ -27,7 +28,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
     businessId: DEFAULT_BUSINESS_ID,
     name: "Native Wear",
     description: "Careful wash and press for native attire",
-    pricePerUnit: 1800,
+    pricePerUnit: 1500,
     unit: "set",
     isActive: true,
   },
@@ -36,7 +37,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
     businessId: DEFAULT_BUSINESS_ID,
     name: "Bedsheet Wash",
     description: "Deep wash for bedding and duvet covers",
-    pricePerUnit: 1500,
+    pricePerUnit: 1100,
     unit: "sheet",
     isActive: true,
   },
@@ -45,7 +46,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
     businessId: DEFAULT_BUSINESS_ID,
     name: "Suit (Dry Clean)",
     description: "Professional dry cleaning for suits",
-    pricePerUnit: 3500,
+    pricePerUnit: 3000,
     unit: "suit",
     isActive: true,
   },
