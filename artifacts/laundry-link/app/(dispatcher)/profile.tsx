@@ -54,7 +54,7 @@ export default function DispatcherProfile() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 80) }}
+      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 100 : 80) }}
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.profileCard, { backgroundColor: colors.card }]}>

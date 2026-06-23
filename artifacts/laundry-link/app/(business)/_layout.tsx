@@ -3,8 +3,9 @@ import { Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, View, useColorScheme } from "react-native";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
 export default function BusinessLayout() {
@@ -13,6 +14,15 @@ export default function BusinessLayout() {
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const { signOut } = useAuth();
+
+  const handleSignOut = () => {
+    if (isWeb) { void signOut(); return; }
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Sign Out", style: "destructive", onPress: () => void signOut() },
+    ]);
+  };
 
   return (
     <Tabs
@@ -117,6 +127,15 @@ export default function BusinessLayout() {
         name="profile"
         options={{
           title: "Profile",
+          headerRight: () => (
+            <Pressable
+              onPress={handleSignOut}
+              style={{ marginRight: 16, padding: 6 }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Feather name="log-out" size={20} color="#ef4444" />
+            </Pressable>
+          ),
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
               <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={22} />
