@@ -1,0 +1,2 @@
+- [Place Order Supabase bugs](place-order-supabase.md) — FK on business_id + role-based RLS: two root causes that blocked all Supabase order creation and business visibility.
+- [Web tab-bar padding](web-tab-padding.md) — All tab-screen ScrollViews need paddingBottom web=100 (not 34); tab bar is 84px absolute-positioned.

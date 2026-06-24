@@ -73,7 +73,7 @@ export default function AdminOrders() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 100) }}
+      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 100 : 100) }}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshOrders} tintColor={colors.accent} />}
     >

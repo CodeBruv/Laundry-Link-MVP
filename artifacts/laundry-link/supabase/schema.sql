@@ -122,6 +122,24 @@ create table if not exists orders (
   updated_at               timestamptz not null default now()
 );
 
+-- ── Migration: drop FK if schema was applied before this fix ─────────────────
+-- Run once in the Supabase SQL editor if your orders table was created with the
+-- old schema that had `business_id text NOT NULL REFERENCES businesses(id)`:
+--
+--   ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_business_id_fkey;
+--
+--   DROP POLICY IF EXISTS "Business users can read their business orders" ON orders;
+--   DROP POLICY IF EXISTS "Business users can update order status" ON orders;
+--   CREATE POLICY "Business users can read their business orders"
+--     ON orders FOR SELECT USING (
+--       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'BUSINESS')
+--     );
+--   CREATE POLICY "Business users can update order status"
+--     ON orders FOR UPDATE USING (
+--       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'BUSINESS')
+--     );
+-- ─────────────────────────────────────────────────────────────────────────────
+
 create index if not exists orders_customer_id_idx on orders(customer_id);
 create index if not exists orders_business_id_idx on orders(business_id);
 create index if not exists orders_status_idx on orders(status);

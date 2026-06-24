@@ -33,7 +33,7 @@ export default function DispatcherDashboard() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 90) }}
+      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 100 : 90) }}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshOrders} tintColor={colors.accent} />}
     >

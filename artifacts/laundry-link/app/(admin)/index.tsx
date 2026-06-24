@@ -63,7 +63,7 @@ export default function AdminDashboard() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 100) }}
+      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 100 : 100) }}
       showsVerticalScrollIndicator={false}
     >
       {/* ── Bright hero ───────────────────────────────────────── */}

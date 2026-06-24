@@ -119,7 +119,7 @@ export default function BusinessServices() {
         style={[styles.container, { backgroundColor: colors.background }]}
         contentContainerStyle={{
           padding: 20,
-          paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 80),
+          paddingBottom: insets.bottom + (Platform.OS === "web" ? 100 : 80),
         }}
         showsVerticalScrollIndicator={false}
       >

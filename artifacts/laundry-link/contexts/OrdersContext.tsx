@@ -293,9 +293,22 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           notifyNewOrder(created.orderNumber, created.businessName);
           return { error: null, orderId: created.id };
         }
+
+        if (error) {
+          console.warn("[LaundryLink] createOrder Supabase error:", error.code, error.message);
+          // When online and Supabase returns a real error, surface it to the caller.
+          // Silently falling back to local would create ghost orders the business can never see.
+          if (isOnline) {
+            return {
+              error:
+                "Could not submit your order. Please check your connection and try again.",
+            };
+          }
+          // Offline — fall through to local queue below
+        }
       }
 
-      // Local fallback
+      // Local fallback: Supabase not configured, demo mode, or offline
       const local = await readLocalOrders();
       const localH = await readLocalHistory();
       await writeLocalOrders([order, ...local]);
@@ -304,7 +317,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       notifyNewOrder(order.orderNumber, order.businessName);
       return { error: null, orderId: order.id };
     },
-    [user, isDemo, refreshOrders],
+    [user, isDemo, refreshOrders, isOnline],
   );
 
   createOrderRef.current = createOrder;

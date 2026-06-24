@@ -88,7 +88,7 @@ export default function AdminAnalytics() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 100), gap: 20, paddingTop: 16 }}
+      contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 100 : 100), gap: 20, paddingTop: 16 }}
       showsVerticalScrollIndicator={false}
     >
       {/* ── Revenue chart (7 days) ────────────────────────── */}

@@ -94,27 +94,36 @@ export default function CreateOrderScreen() {
   const submit = async () => {
     if (!selectedLaundromat) return;
     setIsSubmitting(true);
+    setError("");
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const allItems: OrderItem[] = urgent
-      ? [...items, { id: "urgent-fee", serviceName: "Urgent Handling", quantity: 1, pricePerUnit: 2000, total: 2000 }]
-      : items;
+    try {
+      const allItems: OrderItem[] = urgent
+        ? [...items, { id: "urgent-fee", serviceName: "Urgent Handling", quantity: 1, pricePerUnit: 2000, total: 2000 }]
+        : items;
 
-    const result = await createOrder({
-      businessId: selectedLaundromat.id,
-      businessName: selectedLaundromat.name,
-      pickupAddress: pickupAddress.trim(),
-      deliveryAddress: finalDeliveryAddress.trim(),
-      items: allItems,
-      totalAmount,
-      deliveryFee,
-      specialRequests: specialRequests.trim(),
-      urgent,
-    });
+      const result = await createOrder({
+        businessId: selectedLaundromat.id,
+        businessName: selectedLaundromat.name,
+        pickupAddress: pickupAddress.trim(),
+        deliveryAddress: finalDeliveryAddress.trim(),
+        items: allItems,
+        totalAmount,
+        deliveryFee,
+        specialRequests: specialRequests.trim(),
+        urgent,
+      });
 
-    setIsSubmitting(false);
-    if (result.error) { setError(result.error); return; }
-    router.replace("/(customer)/orders");
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      router.replace("/(customer)/orders");
+    } catch (e: any) {
+      setError(e?.message ?? "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const updateQuantity = (serviceId: string, change: number) => {
@@ -318,8 +327,16 @@ export default function CreateOrderScreen() {
         <View style={styles.card}>
           <Text style={[styles.title, { color: colors.foreground }]}>Select services</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Prices set by {selectedLaundromat?.name}.
+            Prices set by {selectedLaundromat?.name}. Add at least one item to continue.
           </Text>
+          {items.length === 0 && (
+            <View style={[styles.pickupFeeNote, { backgroundColor: colors.accent + "10", borderRadius: colors.radius }]}>
+              <Feather name="info" size={14} color={colors.accent} />
+              <Text style={[styles.pickupFeeText, { color: colors.accent }]}>
+                Tap + on any service below to add it to your order.
+              </Text>
+            </View>
+          )}
           {services.map((service) => (
             <View key={service.id} style={[styles.serviceRow, { borderBottomColor: colors.border }]}>
               <View style={styles.serviceInfo}>
