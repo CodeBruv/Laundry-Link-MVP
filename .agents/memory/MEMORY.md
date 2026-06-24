@@ -1,2 +1,3 @@
 - [Place Order Supabase bugs](place-order-supabase.md) — FK on business_id + role-based RLS: two root causes that blocked all Supabase order creation and business visibility.
 - [Web tab-bar padding](web-tab-padding.md) — All tab-screen ScrollViews need paddingBottom web=100 (not 34); tab bar is 84px absolute-positioned.
+- [Expo Go connectivity on Replit](expo-go-connectivity.md) — Two env vars and a wrong origin are what kills Expo Go device connections in Replit.
