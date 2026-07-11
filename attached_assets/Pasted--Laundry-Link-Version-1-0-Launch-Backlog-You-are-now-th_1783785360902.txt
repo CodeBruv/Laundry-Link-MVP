@@ -1,0 +1,203 @@
+# Laundry Link Version 1.0 Launch Backlog
+
+You are now the Lead Engineer responsible for taking Laundry Link from its current state to a production-ready Operational Version 1.0.
+
+Previous documentation already exists:
+
+* Engineering Handover Audit
+* Developer Knowledge Transfer Document
+
+Do NOT regenerate those documents.
+
+Do NOT analyze the entire project again.
+
+Instead, convert everything you know into an executable engineering backlog.
+
+The goal is to launch Laundry Link as the operational backbone of a single real laundry business (PurePress Laundry) before public SaaS expansion.
+
+## Product Context
+
+Laundry Link Version 1.0 is NOT launching as a public SaaS platform.
+
+Version 1.0 powers one production laundry business:
+
+**PurePress Laundry**
+
+The software must reliably support daily operations for real customers, real dispatchers, real staff, and real payments.
+
+Multi-tenant SaaS capabilities should remain in the architecture where appropriate, but features intended only for external laundromat onboarding should be deferred unless they are required for PurePress operations.
+
+---
+
+## Instructions
+
+Inspect the existing implementation and produce a prioritized engineering backlog.
+
+Do NOT modify code.
+
+Do NOT generate implementation.
+
+Do NOT rebuild anything.
+
+Produce only the engineering backlog.
+
+---
+
+## Organize work into Epics.
+
+Example Epics:
+
+* Authentication
+* Customer Experience
+* Orders
+* Dispatch
+* Laundry Operations
+* Payments
+* Notifications
+* Administration
+* Infrastructure
+* Production Configuration
+* Security
+* Testing
+* Deployment
+
+---
+
+## Under each Epic create individual engineering tasks.
+
+Every task must contain:
+
+### Title
+
+### Purpose
+
+### Current Status
+
+Choose one:
+
+* Complete
+* Partial
+* Missing
+* Needs Refactor
+
+### Priority
+
+Choose one:
+
+* Critical
+* High
+* Medium
+* Low
+
+### Launch Critical
+
+Yes / No
+
+### Dependencies
+
+List prerequisite tasks.
+
+### Acceptance Criteria
+
+Describe exactly when this task is considered complete.
+
+### Estimated Complexity
+
+Small
+
+Medium
+
+Large
+
+### Suggested Implementation Order
+
+---
+
+## Identify blockers.
+
+Separate:
+
+Launch blockers
+
+Important improvements
+
+Future improvements
+
+Version 2 candidates
+
+---
+
+## Include a Production Configuration Epic
+
+List every placeholder that must be replaced before launch.
+
+Examples:
+
+* Paystack Live Keys
+* Supabase Production
+* Cloudinary
+* Maps
+* Email Provider
+* SMS Provider
+* Push Notifications
+* Domains
+* SSL
+* Environment Variables
+* Secrets
+* Webhooks
+
+---
+
+## Include a Data Migration Epic
+
+Identify:
+
+Mock data
+
+Placeholder assets
+
+Fake users
+
+Demo accounts
+
+Temporary services
+
+Hardcoded values
+
+Anything that must be removed before production.
+
+---
+
+## Include a Testing Epic
+
+List:
+
+Critical user journeys
+
+Regression tests
+
+Manual tests
+
+Payment tests
+
+Notification tests
+
+Offline tests
+
+Role permission tests
+
+---
+
+## Final Output
+
+Finish with:
+
+1. Top 20 launch-critical engineering tasks.
+
+2. Recommended implementation sequence.
+
+3. Features that should absolutely NOT be worked on before launch.
+
+The output should be concise, actionable, and suitable for managing engineering sprints.
+
+Do not generate implementation code.

@@ -17,3 +17,9 @@ id = "85WfQQBViMIL3Z0ARNflp"
 uri = "file://laundry-link-dktd.md"
 type = "text"
 title = "LaundryLink — Developer Knowledge Transfer Document (DKTD)"
+
+[[outputs]]
+id = "scHyVRK7NbbIPiBLO7qmp"
+uri = "file://laundry-link-v1-backlog.md"
+type = "text"
+title = "LaundryLink V1.0 Launch Backlog — PurePress Laundry"
