@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "G7PXmB76YBAsF90SQaifp"
 uri = "file://artifacts/laundry-link/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "OxtvMPmJIL3jMGpROYRqI"
+uri = "file://laundry-link-engineering-handover.md"
+type = "text"
+title = "LaundryLink Engineering Handover Audit"
