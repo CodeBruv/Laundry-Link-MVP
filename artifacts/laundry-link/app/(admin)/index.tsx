@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +23,7 @@ export default function AdminDashboard() {
   const { orders, isLoading } = useOrders();
   const { isSuperAdmin, adminTier } = useAdminAccess();
 
+  const router = useRouter();
   const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(" ")[0] || "Admin";
 
   const handleSignOut = () => {
@@ -193,12 +195,22 @@ export default function AdminDashboard() {
         {/* Quick links */}
         <View style={[styles.section, { backgroundColor: colors.card, borderRadius: colors.radius }, shadow]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Quick Actions</Text>
-          {[
-            { icon: "users" as const, label: "Manage Users", sub: "View, add, suspend or delete users" },
-            { icon: "package" as const, label: "All Orders", sub: "Monitor and filter platform-wide orders" },
-            { icon: "trending-up" as const, label: "Analytics", sub: "Revenue charts & system performance" },
-          ].map((item, i, arr) => (
-            <View key={item.label} style={[styles.quickRow, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+          {([
+            { icon: "users"        as const, label: "Manage Users",     sub: "View, add, suspend or delete users",               route: "/(admin)/users"      },
+            { icon: "briefcase"    as const, label: "Businesses",        sub: "Registered laundromats & subscription tiers",      route: "/(admin)/businesses" },
+            { icon: "package"      as const, label: "All Orders",        sub: "Monitor and filter platform-wide orders",          route: "/(admin)/orders"     },
+            { icon: "trending-up"  as const, label: "Analytics",         sub: "Revenue charts & system performance",              route: "/(admin)/analytics"  },
+            { icon: "shield"       as const, label: "Settings & Access",  sub: "Role hierarchy, activity logs, platform config",   route: "/(admin)/settings"   },
+          ] as const).map((item, i, arr) => (
+            <Pressable
+              key={item.label}
+              onPress={() => router.push(item.route as any)}
+              style={({ pressed }) => [
+                styles.quickRow,
+                i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                pressed && { opacity: 0.65 },
+              ]}
+            >
               <View style={[styles.quickIcon, { backgroundColor: colors.accent + "10" }]}>
                 <Feather name={item.icon} size={18} color={colors.accent} />
               </View>
@@ -207,7 +219,7 @@ export default function AdminDashboard() {
                 <Text style={[styles.quickSub, { color: colors.mutedForeground }]}>{item.sub}</Text>
               </View>
               <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </View>
+            </Pressable>
           ))}
         </View>
       </View>

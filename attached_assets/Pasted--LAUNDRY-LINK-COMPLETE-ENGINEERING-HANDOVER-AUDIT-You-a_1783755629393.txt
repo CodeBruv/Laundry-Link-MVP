@@ -1,0 +1,843 @@
+# LAUNDRY LINK — COMPLETE ENGINEERING HANDOVER AUDIT
+
+You are NOT acting as the engineer who built this application.
+
+Instead, you are a newly hired Principal Software Engineer joining the company after the previous engineering team left.
+
+Your task is to reverse-engineer the ENTIRE Laundry Link codebase and produce an exhaustive engineering handover document.
+
+Do NOT modify any code.
+
+Do NOT generate replacement files.
+
+Do NOT refactor anything.
+
+Only inspect, analyze, understand, and document everything that currently exists.
+
+Think like someone preparing a company takeover.
+
+I want the report to be detailed enough that another engineering team could continue development without ever speaking to the original developers.
+
+---
+
+# OUTPUT FORMAT
+
+Produce the report in markdown.
+
+Use proper headings and subheadings.
+
+Be extremely detailed.
+
+Never skip sections because they seem obvious.
+
+If something is partially implemented, clearly state that.
+
+If something is duplicated, mention it.
+
+If something is inconsistent, explain why.
+
+If something is broken, explain exactly what and why.
+
+If something is missing, explain where it belongs.
+
+If assumptions are made, label them as assumptions.
+
+---
+
+# SECTION 1 — Executive Summary
+
+Explain:
+
+* What Laundry Link currently is.
+* Current maturity level.
+* Estimated completion percentage.
+* Overall architecture quality.
+* Overall code quality.
+* Technical debt level.
+* Deployment readiness.
+* Marketplace readiness.
+* Production readiness.
+
+Then summarize:
+
+Current strengths.
+
+Current weaknesses.
+
+Highest risks.
+
+Highest priorities.
+
+---
+
+# SECTION 2 — Product Overview
+
+Explain the business completely.
+
+Document:
+
+Customer journey
+
+Business journey
+
+Dispatcher journey
+
+Admin journey
+
+Sub-admin journey
+
+Payment flow
+
+Wallet flow
+
+Order lifecycle
+
+Pickup workflow
+
+Delivery workflow
+
+Pricing workflow
+
+Emergency pricing
+
+Commission model
+
+Notification flow
+
+Review flow
+
+Support flow
+
+Dispute flow
+
+Refund flow
+
+KYC flow
+
+Business verification
+
+Everything discovered from the project.
+
+---
+
+# SECTION 3 — Architecture
+
+Describe the architecture completely.
+
+Include:
+
+Frontend
+
+Backend
+
+Database
+
+Authentication
+
+Authorization
+
+Real-time communication
+
+Cloudinary
+
+Paystack
+
+Socket.IO
+
+API structure
+
+Folder structure
+
+Environment variables
+
+Configuration
+
+Services
+
+Utilities
+
+Hooks
+
+Contexts
+
+Providers
+
+Middlewares
+
+Prisma
+
+Mongo/Postgres usage
+
+State management
+
+Routing
+
+Lazy loading
+
+Caching
+
+Error handling
+
+Validation
+
+Logging
+
+Rate limiting
+
+Security
+
+Everything.
+
+Draw a high-level architecture diagram in markdown if possible.
+
+---
+
+# SECTION 4 — Feature Inventory
+
+List EVERY feature currently implemented.
+
+Group by module.
+
+For each feature specify:
+
+Purpose
+
+Current status
+
+Completed
+
+Partial
+
+Broken
+
+Placeholder
+
+Unused
+
+Duplicate
+
+Needs rewrite
+
+Missing backend
+
+Missing frontend
+
+Missing API
+
+Missing validation
+
+Missing UI
+
+Missing permissions
+
+Missing testing
+
+Missing integration
+
+---
+
+# SECTION 5 — Authentication & Authorization
+
+Inspect everything.
+
+Document:
+
+Login
+
+Registration
+
+Google login
+
+JWT
+
+Session handling
+
+Protected routes
+
+Role permissions
+
+Role hierarchy
+
+Business permissions
+
+Dispatcher permissions
+
+Admin permissions
+
+Customer permissions
+
+Sub-admin permissions
+
+Forgot password
+
+Reset password
+
+Email verification
+
+Phone verification
+
+KYC permissions
+
+Anything missing.
+
+---
+
+# SECTION 6 — Database Audit
+
+List every model.
+
+Explain relationships.
+
+Identify:
+
+Unused tables
+
+Unused models
+
+Duplicate models
+
+Dead fields
+
+Missing indexes
+
+Missing relations
+
+Missing constraints
+
+Poor naming
+
+Potential migrations
+
+Potential scalability issues
+
+Potential normalization problems
+
+Potential data integrity problems.
+
+---
+
+# SECTION 7 — API Audit
+
+List every endpoint.
+
+For every endpoint document:
+
+Method
+
+Purpose
+
+Authentication
+
+Input
+
+Output
+
+Current implementation status
+
+Frontend usage
+
+Missing validation
+
+Security concerns
+
+Performance concerns
+
+Dead endpoint
+
+Duplicate endpoint
+
+Unused endpoint
+
+---
+
+# SECTION 8 — Frontend Audit
+
+Inspect every page.
+
+Inspect every component.
+
+Inspect every route.
+
+Inspect every modal.
+
+Inspect every dialog.
+
+Inspect every form.
+
+Inspect every dashboard.
+
+Inspect every layout.
+
+Inspect navigation.
+
+Inspect responsiveness.
+
+Inspect accessibility.
+
+Inspect dark mode.
+
+Inspect loading states.
+
+Inspect empty states.
+
+Inspect error states.
+
+Identify:
+
+Unused components
+
+Duplicate components
+
+Broken navigation
+
+Missing pages
+
+Placeholder screens
+
+Unreachable routes
+
+UI inconsistencies
+
+---
+
+# SECTION 9 — Backend Audit
+
+Inspect:
+
+Controllers
+
+Routes
+
+Services
+
+Repositories
+
+Utilities
+
+Middlewares
+
+Validation
+
+Business logic
+
+Socket events
+
+Background jobs
+
+Cloudinary integration
+
+Payment integration
+
+Notification logic
+
+Logging
+
+Caching
+
+Error handling
+
+Transaction handling
+
+Dead code
+
+Duplicate code
+
+Unused code
+
+---
+
+# SECTION 10 — Socket.IO Audit
+
+Document:
+
+Current events
+
+Missing events
+
+Broken events
+
+Unused events
+
+Potential race conditions
+
+Connection handling
+
+Reconnection
+
+Presence
+
+Order updates
+
+Driver tracking
+
+Live notifications
+
+---
+
+# SECTION 11 — Payment Audit
+
+Inspect Paystack integration.
+
+Explain:
+
+Current payment flow
+
+Webhook handling
+
+Wallet funding
+
+Commission deduction
+
+Business payout
+
+Dispatcher payout
+
+Refund handling
+
+Failure handling
+
+Retry handling
+
+Security
+
+Idempotency
+
+Anything incomplete.
+
+---
+
+# SECTION 12 — Security Audit
+
+Check:
+
+JWT
+
+Authentication
+
+Authorization
+
+Password hashing
+
+Secrets
+
+Environment variables
+
+Validation
+
+Injection risks
+
+Rate limiting
+
+CORS
+
+XSS
+
+CSRF
+
+Broken access control
+
+Sensitive logging
+
+File upload security
+
+Cloudinary security
+
+Paystack verification
+
+Socket security
+
+Anything dangerous.
+
+---
+
+# SECTION 13 — Performance Audit
+
+Inspect:
+
+Rendering
+
+Database queries
+
+Bundle size
+
+API efficiency
+
+Repeated requests
+
+Memory leaks
+
+Duplicate rendering
+
+Large components
+
+Slow pages
+
+Missing pagination
+
+Missing lazy loading
+
+Missing indexing
+
+Potential bottlenecks.
+
+---
+
+# SECTION 14 — Code Quality Audit
+
+Identify:
+
+Code smells
+
+Large files
+
+Duplicate logic
+
+Repeated components
+
+Repeated services
+
+Poor naming
+
+Unused imports
+
+Dead files
+
+Commented code
+
+Incomplete TODOs
+
+Temporary fixes
+
+Technical debt.
+
+---
+
+# SECTION 15 — Testing Audit
+
+List:
+
+Existing tests
+
+Missing tests
+
+Critical areas without tests
+
+Suggested testing priorities.
+
+---
+
+# SECTION 16 — UX Audit
+
+Inspect:
+
+Customer experience
+
+Business experience
+
+Dispatcher experience
+
+Admin experience
+
+Navigation
+
+Responsiveness
+
+Forms
+
+Accessibility
+
+Error messages
+
+Micro-interactions
+
+Animations
+
+Loading indicators
+
+Success feedback
+
+Consistency.
+
+---
+
+# SECTION 17 — Missing Features
+
+List every feature expected in a production Laundry Marketplace that is not yet implemented.
+
+Separate them into:
+
+Critical
+
+High Priority
+
+Medium
+
+Low
+
+Future roadmap.
+
+---
+
+# SECTION 18 — Duplicate Work
+
+Identify:
+
+Duplicate pages
+
+Duplicate APIs
+
+Duplicate logic
+
+Duplicate components
+
+Duplicate utilities
+
+Duplicate models
+
+Duplicate services
+
+Duplicate routes
+
+Anything redundant.
+
+---
+
+# SECTION 19 — Bugs
+
+List every discovered bug.
+
+Include:
+
+Severity
+
+Reproduction steps
+
+Likely cause
+
+Suggested fix
+
+Affected modules.
+
+---
+
+# SECTION 20 — Production Readiness Checklist
+
+Evaluate every major production requirement.
+
+Mark each as:
+
+✅ Ready
+
+⚠ Partial
+
+❌ Missing
+
+Cover:
+
+Authentication
+
+Authorization
+
+Payments
+
+Real-time
+
+Notifications
+
+Emails
+
+SMS
+
+Push notifications
+
+Monitoring
+
+Logging
+
+Backups
+
+Deployment
+
+CI/CD
+
+Testing
+
+Analytics
+
+Security
+
+Performance
+
+SEO (where applicable)
+
+Accessibility
+
+Documentation
+
+Disaster recovery
+
+Scalability
+
+---
+
+# SECTION 21 — Milestone Timeline
+
+Based on the existing codebase, reconstruct the development history.
+
+Estimate:
+
+Features completed
+
+Features started but abandoned
+
+Major milestones achieved
+
+Milestones missed
+
+Areas that changed direction
+
+Experimental features
+
+Abandoned implementations.
+
+---
+
+# SECTION 22 — Final Engineering Verdict
+
+Answer:
+
+How close is Laundry Link to launch?
+
+What absolutely must be fixed before production?
+
+What should be postponed until Version 2?
+
+What should be removed entirely?
+
+What should be rewritten?
+
+What should stay exactly as it is?
+
+Estimate remaining engineering effort in:
+
+Hours
+
+Days
+
+Weeks
+
+Finally, produce a prioritized engineering roadmap from today until a stable Version 1.0 production release.
+
+IMPORTANT:
+
+This is strictly an audit and handover.
+
+Do not write or modify any application code.
+
+Do not generate ZIP files.
+
+Do not refactor the project.
+
+Do not rebuild anything.
+
+Only inspect, document, evaluate, and report with maximum detail.
