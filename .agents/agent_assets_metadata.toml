@@ -11,3 +11,9 @@ id = "OxtvMPmJIL3jMGpROYRqI"
 uri = "file://laundry-link-engineering-handover.md"
 type = "text"
 title = "LaundryLink Engineering Handover Audit"
+
+[[outputs]]
+id = "85WfQQBViMIL3Z0ARNflp"
+uri = "file://laundry-link-dktd.md"
+type = "text"
+title = "LaundryLink — Developer Knowledge Transfer Document (DKTD)"
