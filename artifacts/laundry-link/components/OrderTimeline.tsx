@@ -5,10 +5,13 @@ import { StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { OrderStatus, OrderStatusHistory } from "@/types";
 
-const STATUS_CONFIG: Record<
-  OrderStatus,
-  { label: string; color: string; icon: keyof typeof Feather.glyphMap; bg: string }
+const STATUS_CONFIG: Partial<
+  Record<
+    OrderStatus,
+    { label: string; color: string; icon: keyof typeof Feather.glyphMap; bg: string }
+  >
 > = {
+  // ── Legacy ────────────────────────────────────────────────────────────
   PENDING:          { label: "Order Placed",       color: "#f59e0b", icon: "clock",        bg: "#f59e0b18" },
   ACCEPTED:         { label: "Accepted",            color: "#3b82f6", icon: "check-circle", bg: "#3b82f618" },
   PICKED_UP:        { label: "Picked Up",           color: "#8b5cf6", icon: "shopping-bag", bg: "#8b5cf618" },
@@ -16,8 +19,25 @@ const STATUS_CONFIG: Record<
   READY:            { label: "Ready for Delivery",  color: "#10b981", icon: "package",      bg: "#10b98118" },
   PAID:             { label: "Payment Received",    color: "#059669", icon: "dollar-sign",  bg: "#05966918" },
   OUT_FOR_DELIVERY: { label: "Out for Delivery",    color: "#f97316", icon: "truck",        bg: "#f9731618" },
-  DELIVERED:        { label: "Delivered",           color: "#22c55e", icon: "check",        bg: "#22c55e18" },
-  CANCELLED:        { label: "Cancelled",           color: "#ef4444", icon: "x-circle",     bg: "#ef444418" },
+  // ── Production workflow ───────────────────────────────────────────────
+  DRAFT:               { label: "Draft",                color: "#f59e0b", icon: "clock",        bg: "#f59e0b18" },
+  DEPOSIT_PAID:        { label: "Deposit Paid",         color: "#059669", icon: "dollar-sign",  bg: "#05966918" },
+  PICKUP_ASSIGNED:     { label: "Pickup Assigned",      color: "#3b82f6", icon: "user",         bg: "#3b82f618" },
+  PICKUP_COMPLETED:    { label: "Pickup Completed",     color: "#8b5cf6", icon: "shopping-bag", bg: "#8b5cf618" },
+  RECEIVED_AT_LAUNDRY: { label: "Received at Laundry", color: "#4f46e5", icon: "home",         bg: "#4f46e518" },
+  SORTING:             { label: "Sorting",              color: "#4338ca", icon: "list",         bg: "#4338ca18" },
+  WASHING:             { label: "Washing",              color: "#2563eb", icon: "refresh-cw",   bg: "#2563eb18" },
+  DRYING:              { label: "Drying",               color: "#0891b2", icon: "wind",         bg: "#0891b218" },
+  IRONING:             { label: "Ironing",              color: "#b45309", icon: "zap",          bg: "#b4530918" },
+  QUALITY_CHECK:       { label: "Quality Check",        color: "#7c3aed", icon: "eye",          bg: "#7c3aed18" },
+  PACKAGING:           { label: "Packaging",            color: "#475569", icon: "box",          bg: "#47556918" },
+  SHELF_LOCATION:      { label: "Shelf Location",       color: "#64748b", icon: "archive",      bg: "#64748b18" },
+  READY_FOR_DELIVERY:  { label: "Ready for Delivery",   color: "#10b981", icon: "package",      bg: "#10b98118" },
+  BALANCE_PAID:        { label: "Balance Paid",         color: "#059669", icon: "credit-card",  bg: "#05966918" },
+  DELIVERY_ASSIGNED:   { label: "Delivery Assigned",    color: "#f97316", icon: "truck",        bg: "#f9731618" },
+  DELIVERED:           { label: "Delivered",            color: "#22c55e", icon: "check",        bg: "#22c55e18" },
+  COMPLETED:           { label: "Completed",            color: "#16a34a", icon: "check-circle", bg: "#16a34a18" },
+  CANCELLED:           { label: "Cancelled",            color: "#ef4444", icon: "x-circle",     bg: "#ef444418" },
 };
 
 export function OrderTimeline({ history }: { history: OrderStatusHistory[] }) {

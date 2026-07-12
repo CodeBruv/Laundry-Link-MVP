@@ -1,0 +1,248 @@
+# Sprint 2 — Production Data Foundation
+
+Continue development on the existing Laundry Link project.
+
+Do NOT rebuild.
+
+Do NOT redesign.
+
+Do NOT modify completed Sprint 1 work unless required.
+
+The objective of this sprint is to replace demo business data with production-ready operational data for PurePress Laundry.
+
+---
+
+## Product Context
+
+Laundry Link Version 1.0 powers one operational laundry business:
+
+**PurePress Laundry**
+
+This sprint establishes the production database foundation that all future features will use.
+
+---
+
+# TASK 1 — Seed the PurePress Business
+
+Create the initial business record.
+
+Business Name:
+PurePress Laundry
+
+Parent Company:
+Code Bruv Technologies LTD
+
+Location:
+Old Airport Road, Jos
+
+City:
+Jos
+
+State:
+Plateau State
+
+Country:
+Nigeria
+
+Support Email:
+[support@purepresslaundry.com](mailto:support@purepresslaundry.com)
+
+Phone:
+08024945119
+
+Website:
+purepresslaundry.com
+
+Business Radius:
+50 km
+
+Working Hours:
+Monday–Saturday
+9:00 AM–5:00 PM
+
+Ensure this becomes the default business throughout the application.
+
+---
+
+# TASK 2 — Production Service Catalogue
+
+Replace generic service definitions with the real PurePress catalogue.
+
+Each service should have:
+
+* Internal ID
+* Display Name
+* Category
+* Base Price
+* Pricing Unit
+* Active Flag
+
+Examples include:
+
+* Shirt
+* Trouser
+* Jeans
+* Duvet (S/M/L)
+* Blanket (S/M/L)
+* Curtains
+* Hoodie
+* Tracksuit
+* Kaftan
+* Agbada
+* Jacket
+* Female Native
+* Dry Cleaning
+* Stain Treatment
+
+Do NOT hardcode prices into business logic.
+
+Store them in a configurable structure.
+
+---
+
+# TASK 3 — Pricing Rules
+
+Create configurable pricing rules for:
+
+* Pickup fee (distance based)
+* Delivery fee (distance based)
+* White garment surcharge
+* Corset/Stonework surcharge
+* Same-day surcharge
+* Next-day surcharge
+* 48-hour surcharge
+* After-hours surcharge
+* Holiday surcharge
+* Promo code support
+* Deposit percentage
+* Storage fee configuration
+
+These should be data-driven.
+
+---
+
+# TASK 4 — Order Status Configuration
+
+Create a centralized status configuration matching the approved operational workflow:
+
+Draft
+
+Deposit Paid
+
+Pickup Assigned
+
+Pickup Completed
+
+Received at Laundry
+
+Sorting
+
+Washing
+
+Drying
+
+Ironing
+
+Quality Check
+
+Packaging
+
+Shelf Location
+
+Ready for Delivery
+
+Balance Paid
+
+Delivery Assigned
+
+Delivered
+
+Completed
+
+Each status should support:
+
+* Display label
+* Internal key
+* Sort order
+* Customer visibility
+* Staff visibility
+* Timestamp tracking eligibility
+
+---
+
+# TASK 5 — Business Settings
+
+Create configurable operational settings including:
+
+* Operating hours
+* Service radius
+* Maximum dispatcher jobs
+* OTP requirements
+* Deposit percentage
+* Cancellation policy
+* Storage period
+* Compensation policy reference
+* Notification preferences
+
+Do not scatter these settings throughout the project.
+
+---
+
+# TASK 6 — Production Seed Data
+
+Remove remaining demo operational data.
+
+Seed:
+
+* PurePress business
+* Production settings
+* Service catalogue
+* Pricing rules
+* Order statuses
+
+Do NOT create fake customers or fake dispatchers.
+
+---
+
+# TASK 7 — Initial Admin Preparation
+
+Prepare the application for the first real administrator.
+
+Do NOT expose Admin registration publicly.
+
+Document the recommended process for creating the first SUPER administrator through Supabase.
+
+---
+
+# Acceptance Criteria
+
+Sprint is complete only when:
+
+* PurePress becomes the default production business.
+* Production service catalogue exists.
+* Pricing rules are configurable.
+* Order lifecycle is centralized.
+* Business settings are centralized.
+* Demo operational data has been removed.
+* No customer-facing functionality is broken.
+
+---
+
+# Output Required
+
+Provide:
+
+1. Executive Summary
+
+2. Files Modified
+
+3. Database Changes
+
+4. Seed Data Added
+
+5. Remaining Risks
+
+6. Suggested Next Sprint
+
+Do not continue automatically.
+Wait for approval.

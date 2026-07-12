@@ -10,7 +10,26 @@ export interface UserProfile {
   createdAt: string;
 }
 
+/**
+ * OrderStatus — unified type covering both the legacy 9-status set
+ * (backward-compatible with existing Supabase rows) and the full
+ * PurePress 17-step production workflow.
+ *
+ * Legacy statuses (from original schema):
+ *   PENDING → maps to DRAFT
+ *   ACCEPTED → maps to DEPOSIT_PAID
+ *   PICKED_UP → maps to PICKUP_COMPLETED
+ *   IN_PROGRESS → maps to WASHING
+ *   READY → maps to READY_FOR_DELIVERY
+ *   PAID → maps to BALANCE_PAID
+ *   OUT_FOR_DELIVERY → maps to DELIVERY_ASSIGNED
+ *   DELIVERED, CANCELLED → kept as-is
+ *
+ * See: constants/orderStatuses.ts for the full status config and
+ *      LEGACY_STATUS_MAP for the migration mapping.
+ */
 export type OrderStatus =
+  // ── Legacy (backward compat — do not use for new orders) ─────────────
   | "PENDING"
   | "ACCEPTED"
   | "PICKED_UP"
@@ -18,7 +37,24 @@ export type OrderStatus =
   | "READY"
   | "PAID"
   | "OUT_FOR_DELIVERY"
+  // ── PurePress production workflow ─────────────────────────────────────
+  | "DRAFT"
+  | "DEPOSIT_PAID"
+  | "PICKUP_ASSIGNED"
+  | "PICKUP_COMPLETED"
+  | "RECEIVED_AT_LAUNDRY"
+  | "SORTING"
+  | "WASHING"
+  | "DRYING"
+  | "IRONING"
+  | "QUALITY_CHECK"
+  | "PACKAGING"
+  | "SHELF_LOCATION"
+  | "READY_FOR_DELIVERY"
+  | "BALANCE_PAID"
+  | "DELIVERY_ASSIGNED"
   | "DELIVERED"
+  | "COMPLETED"
   | "CANCELLED";
 
 export interface Order {
@@ -77,6 +113,7 @@ export interface LaundryService {
   pricePerUnit: number;
   unit: string;
   isActive: boolean;
+  category?: string;
 }
 
 export type SubscriptionTier = "STARTER" | "PRO" | "ENTERPRISE";

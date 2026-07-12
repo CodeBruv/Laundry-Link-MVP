@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 import { OrderStatus, UserRole } from "@/types";
+import { getStatusLabel } from "@/constants/orderStatuses";
 
 // Lazy import to avoid crashing Expo Go on Android SDK 53+
 // Local notifications (schedule) still work in Expo Go; push tokens do not.
@@ -107,23 +108,13 @@ export function notifyStatusChange(
   status: OrderStatus,
   recipientRole: UserRole,
 ) {
-  const labels: Record<OrderStatus, string> = {
-    PENDING: "Pending",
-    ACCEPTED: "Accepted",
-    PICKED_UP: "Picked up",
-    IN_PROGRESS: "In Progress",
-    READY: "Ready — tap to pay",
-    PAID: "Payment received",
-    OUT_FOR_DELIVERY: "Out for delivery",
-    DELIVERED: "Delivered",
-    CANCELLED: "Cancelled",
-  };
+  const label = getStatusLabel(status);
 
   sendLocalNotification(
-    `Order #${orderNumber} — ${labels[status]}`,
+    `Order #${orderNumber} — ${label}`,
     recipientRole === "CUSTOMER"
-      ? `Your laundry order is now: ${labels[status]}`
-      : `Order #${orderNumber} updated to ${labels[status]}`,
+      ? `Your laundry order is now: ${label}`
+      : `Order #${orderNumber} updated to ${label}`,
     { type: "STATUS_CHANGE", status },
   );
 }
