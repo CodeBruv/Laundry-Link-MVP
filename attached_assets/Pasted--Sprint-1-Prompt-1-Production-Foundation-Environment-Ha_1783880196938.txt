@@ -1,0 +1,261 @@
+# Sprint 1 — Prompt 1: Production Foundation & Environment Hardening
+
+You are continuing development of the existing Laundry Link codebase.
+
+Do NOT rebuild the application.
+
+Do NOT change the overall architecture.
+
+Do NOT redesign the UI unless required for functionality.
+
+The goal of this sprint is to convert the project from a demo-oriented application into a production-oriented foundation while preserving existing functionality.
+
+---
+
+## Product Context
+
+Laundry Link Version 1.0 will operate a single production laundry business:
+
+**PurePress Laundry**
+
+The current architecture should remain capable of supporting future SaaS expansion, but Version 1.0 only needs to support one operational business.
+
+No public business onboarding is required.
+
+No subscription management is required.
+
+No multi-business switching is required.
+
+---
+
+# Objective
+
+Prepare the project for production development by removing demo assumptions, centralizing configuration, validating the environment, and improving the application's foundation.
+
+This sprint should NOT introduce new customer-facing features.
+
+---
+
+# TASK 1 — Audit Existing Configuration
+
+Inspect the project and identify:
+
+* Demo configuration
+* Hardcoded URLs
+* Hardcoded API keys
+* Placeholder values
+* Fake environment variables
+* Development-only configuration
+* Unused configuration
+* Duplicate configuration
+
+Replace these with a centralized configuration system where appropriate.
+
+---
+
+# TASK 2 — Environment Separation
+
+Create proper support for:
+
+Development
+
+Staging (if architecture already supports it)
+
+Production
+
+The application should clearly know which environment it is running in.
+
+---
+
+# TASK 3 — Environment Validation
+
+Implement startup validation.
+
+Before the application initializes, verify required environment variables exist.
+
+Examples include:
+
+Supabase
+
+Cloudinary
+
+Paystack
+
+Maps
+
+Push Notifications
+
+Application URLs
+
+Do NOT add real secrets.
+
+Use placeholders where credentials are not yet available.
+
+If required values are missing, produce meaningful developer errors instead of allowing silent failures.
+
+---
+
+# TASK 4 — Business Configuration Layer
+
+Create a centralized business configuration object.
+
+It should support settings such as:
+
+Business Name:
+PurePress Laundry
+
+Parent Company:
+Code Bruv Technologies LTD
+
+Business Email:
+[support@purepresslaundry.com](mailto:support@purepresslaundry.com)
+
+Business Phone:
+08024945119
+
+Business Website:
+purepresslaundry.com
+
+Operating Hours:
+9:00 AM – 5:00 PM
+
+Working Days:
+Monday – Saturday
+
+Service Radius:
+50 km
+
+City:
+Jos
+
+State:
+Plateau State
+
+Country:
+Nigeria
+
+Brand Colors:
+
+Primary:
+Ocean Blue
+
+Secondary:
+Off White
+
+Accent:
+Use existing design system where appropriate.
+
+These values should be configurable rather than scattered throughout the codebase.
+
+---
+
+# TASK 5 — Remove Demo Mode
+
+Locate all demo-specific logic.
+
+Examples:
+
+Demo accounts
+
+Mock authentication
+
+Fake users
+
+Placeholder orders
+
+Temporary data
+
+Development banners
+
+Simulated business data
+
+Convert these into production-ready structures without breaking the application.
+
+If production implementations are not yet available, clearly isolate the placeholder logic for future replacement.
+
+---
+
+# TASK 6 — Logging Improvements
+
+Improve developer logging.
+
+Use structured logs where appropriate.
+
+Reduce unnecessary console output.
+
+Ensure production builds do not expose unnecessary debug information.
+
+---
+
+# TASK 7 — Code Cleanup
+
+Remove:
+
+Dead code
+
+Unused imports
+
+Unused services
+
+Duplicate utilities
+
+Duplicate constants
+
+Obsolete configuration
+
+Only remove items that are confirmed unused.
+
+Do not remove architecture intended for future SaaS expansion.
+
+---
+
+# TASK 8 — Documentation
+
+Create or update documentation describing:
+
+Environment variables
+
+Configuration structure
+
+How environments work
+
+How to switch environments
+
+Business configuration
+
+Missing credentials still required before production
+
+---
+
+# Acceptance Criteria
+
+The sprint is complete only when:
+
+* The application still runs successfully.
+* Existing functionality remains intact.
+* Demo assumptions have been isolated or removed.
+* Configuration is centralized.
+* Environment validation is implemented.
+* Business information is no longer hardcoded across multiple files.
+* Production readiness has improved without introducing new features.
+
+---
+
+# Output Required
+
+When finished, provide:
+
+1. Executive Summary
+
+2. Files Modified
+
+3. Major Decisions Made
+
+4. Remaining Risks
+
+5. Items Deferred
+
+6. Suggested Next Sprint
+
+Do NOT continue into the next sprint automatically.
+Wait for approval before proceeding.

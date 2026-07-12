@@ -19,9 +19,13 @@ import {
   notifyDispatcherAssigned,
   notifyPaymentReceived,
   notifyOrderReady,
-  sendLocalNotification,
 } from "@/lib/notifications";
-import { DEFAULT_BUSINESS_ID, DEFAULT_BUSINESS_NAME } from "@/constants/services";
+import {
+  DEFAULT_BUSINESS_ID,
+  DEFAULT_BUSINESS_NAME,
+  DEFAULT_DELIVERY_FEE,
+} from "@/constants/businessConfig";
+import { ENV } from "@/constants/env";
 import {
   CreateOrderInput,
   Order,
@@ -32,7 +36,6 @@ import {
 
 const STORAGE_KEY = "laundry_link_orders_v4";
 const HISTORY_KEY = "laundry_link_order_history_v4";
-const DELIVERY_FEE = 1500;
 
 interface OrdersContextType {
   orders: Order[];
@@ -84,7 +87,7 @@ function mapOrder(row: any): Order {
     status: row.status,
     items: row.items ?? [],
     totalAmount: Number(row.total_amount ?? row.totalAmount ?? 0),
-    deliveryFee: Number(row.delivery_fee ?? row.deliveryFee ?? DELIVERY_FEE),
+    deliveryFee: Number(row.delivery_fee ?? row.deliveryFee ?? DEFAULT_DELIVERY_FEE),
     pickupAddress: row.pickup_address ?? row.pickupAddress,
     deliveryAddress: row.delivery_address ?? row.deliveryAddress,
     specialRequests: row.special_requests ?? row.specialRequests,
@@ -130,9 +133,7 @@ async function writeLocalHistory(history: OrderStatusHistory[]) {
 
 function filterOrdersForRole(allOrders: Order[], role: UserRole | null, userId?: string) {
   if (role === "CUSTOMER") return allOrders.filter((o) => o.customerId === userId);
-  // Business sees all orders — in production each business has their own Supabase RLS policy
   if (role === "BUSINESS") return allOrders;
-  // Dispatcher sees all assigned orders (assignment pool model)
   if (role === "DISPATCHER") return allOrders.filter((o) => !!o.dispatcherId || !!o.assignedDriverName);
   return allOrders;
 }
@@ -153,7 +154,6 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       if (isSupabaseConfigured && !isDemo) {
         let query = supabase.from("orders").select("*").order("created_at", { ascending: false });
         if (role === "CUSTOMER") query = query.eq("customer_id", user.id);
-        // BUSINESS: no filter — in production Supabase RLS handles per-business isolation
         if (role === "DISPATCHER") query = query.not("assigned_driver_id", "is", null);
 
         const { data, error } = await query;
@@ -174,8 +174,10 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           setIsLoading(false);
           return;
         }
+        if (error && ENV.IS_DEV) {
+          console.warn("[PurePress] refreshOrders error:", error.message);
+        }
       }
-      // Local fallback
       const local = await readLocalOrders();
       const localH = await readLocalHistory();
       setOrders(filterOrdersForRole(local, role, user.id));
@@ -187,7 +189,6 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { refreshOrders(); }, [refreshOrders]);
 
-  // Supabase realtime
   useEffect(() => {
     if (!isSupabaseConfigured || isDemo || !user) return;
     const channel = supabase
@@ -197,7 +198,6 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     return () => { supabase.removeChannel(channel); };
   }, [user, isDemo, refreshOrders]);
 
-  // Offline queue flush — retry queued orders when back online
   useEffect(() => {
     if (!isOnline || !user || isFlushing.current || !createOrderRef.current) return;
 
@@ -209,6 +209,9 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
         for (const item of queue) {
           if (item.attempts >= 3) {
             await removeFromQueue(item.id);
+            if (ENV.IS_DEV) {
+              console.warn("[PurePress] Offline queue item discarded after 3 attempts:", item.id);
+            }
             continue;
           }
           await incrementAttempts(item.id);
@@ -242,7 +245,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
         status: "PENDING",
         items: input.items,
         totalAmount: input.totalAmount,
-        deliveryFee: input.deliveryFee ?? DELIVERY_FEE,
+        deliveryFee: input.deliveryFee ?? DEFAULT_DELIVERY_FEE,
         pickupAddress: input.pickupAddress,
         deliveryAddress: input.deliveryAddress,
         specialRequests: input.specialRequests,
@@ -295,20 +298,15 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (error) {
-          console.warn("[LaundryLink] createOrder Supabase error:", error.code, error.message);
-          // When online and Supabase returns a real error, surface it to the caller.
-          // Silently falling back to local would create ghost orders the business can never see.
-          if (isOnline) {
-            return {
-              error:
-                "Could not submit your order. Please check your connection and try again.",
-            };
+          if (ENV.IS_DEV) {
+            console.warn("[PurePress] createOrder error:", error.code, error.message);
           }
-          // Offline — fall through to local queue below
+          if (isOnline) {
+            return { error: "Could not submit your order. Please check your connection and try again." };
+          }
         }
       }
 
-      // Local fallback: Supabase not configured, demo mode, or offline
       const local = await readLocalOrders();
       const localH = await readLocalHistory();
       await writeLocalOrders([order, ...local]);
@@ -327,7 +325,6 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       if (!user) return { error: "You must be signed in." };
       const now = new Date().toISOString();
 
-      // Find the order to get metadata for the notification
       const targetOrder = orders.find((o) => o.id === orderId);
       const orderNumber = targetOrder?.orderNumber ?? orderId;
 
@@ -355,7 +352,6 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
         return { error: null };
       }
 
-      // Local-only path (Supabase not configured)
       const local = await readLocalOrders();
       const updated = local.map((o) => o.id === orderId ? { ...o, status, updatedAt: now } : o);
       const localH = await readLocalHistory();

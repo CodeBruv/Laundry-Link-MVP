@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { StyleSheet, useColorScheme } from "react-native";
+import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -20,9 +20,12 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { OrdersProvider } from "@/contexts/OrdersContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { useNotifications } from "@/hooks/useNotifications";
+import { validateEnv } from "@/constants/env";
 import colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
+
+validateEnv();
 
 const queryClient = new QueryClient();
 
@@ -32,18 +35,14 @@ function AppServices() {
 }
 
 function RootLayoutNav() {
-  const scheme = useColorScheme();
-  const bg = scheme === "dark" ? colors.dark.background : colors.light.background;
-
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        // Enable native swipe-back gesture on iOS & gesture nav on Android
         gestureEnabled: true,
         gestureDirection: "horizontal",
         animation: "slide_from_right",
-        contentStyle: { backgroundColor: bg },
+        contentStyle: { backgroundColor: colors.light.background },
       }}
     >
       <Stack.Screen name="index" />

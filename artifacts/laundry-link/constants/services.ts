@@ -1,13 +1,12 @@
 import { LaundryService } from "@/types";
+import { BUSINESS_CONFIG } from "@/constants/businessConfig";
 
-// Must match the laundromat ID in constants/laundromats.ts for the default business
-export const DEFAULT_BUSINESS_ID = "freshclean-jos";
-export const DEFAULT_BUSINESS_NAME = "FreshClean Laundry";
+export { DEFAULT_BUSINESS_ID, DEFAULT_BUSINESS_NAME } from "@/constants/businessConfig";
 
 export const LAUNDRY_SERVICES: LaundryService[] = [
   {
     id: "shirt-wash",
-    businessId: DEFAULT_BUSINESS_ID,
+    businessId: BUSINESS_CONFIG.id,
     name: "Shirt Wash & Iron",
     description: "Wash, dry, and iron shirts",
     pricePerUnit: 500,
@@ -16,7 +15,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
   },
   {
     id: "trouser-press",
-    businessId: DEFAULT_BUSINESS_ID,
+    businessId: BUSINESS_CONFIG.id,
     name: "Trouser Press",
     description: "Steam press for trousers",
     pricePerUnit: 800,
@@ -25,7 +24,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
   },
   {
     id: "native-wear",
-    businessId: DEFAULT_BUSINESS_ID,
+    businessId: BUSINESS_CONFIG.id,
     name: "Native Wear",
     description: "Careful wash and press for native attire",
     pricePerUnit: 1500,
@@ -34,7 +33,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
   },
   {
     id: "bedsheet",
-    businessId: DEFAULT_BUSINESS_ID,
+    businessId: BUSINESS_CONFIG.id,
     name: "Bedsheet Wash",
     description: "Deep wash for bedding and duvet covers",
     pricePerUnit: 1100,
@@ -43,7 +42,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
   },
   {
     id: "suit",
-    businessId: DEFAULT_BUSINESS_ID,
+    businessId: BUSINESS_CONFIG.id,
     name: "Suit (Dry Clean)",
     description: "Professional dry cleaning for suits",
     pricePerUnit: 3000,
@@ -52,7 +51,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
   },
   {
     id: "dress",
-    businessId: DEFAULT_BUSINESS_ID,
+    businessId: BUSINESS_CONFIG.id,
     name: "Ladies Dress",
     description: "Gentle wash and iron for dresses",
     pricePerUnit: 1200,
@@ -61,7 +60,7 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
   },
   {
     id: "express-fee",
-    businessId: DEFAULT_BUSINESS_ID,
+    businessId: BUSINESS_CONFIG.id,
     name: "Express Handling",
     description: "Priority same-day handling when available",
     pricePerUnit: 2000,
@@ -70,8 +69,14 @@ export const LAUNDRY_SERVICES: LaundryService[] = [
   },
 ];
 
-export const DISPATCHERS = [
-  { id: "11111111-1111-4111-8111-111111111111", name: "Aminu Suleiman" },
-  { id: "22222222-2222-4222-8222-222222222222", name: "Daniel Okafor" },
-  { id: "33333333-3333-4333-8333-333333333333", name: "Chioma Eze" },
-];
+/**
+ * DISPATCHERS — pending replacement with live Supabase query.
+ *
+ * This array is intentionally empty. Real dispatcher users are fetched from the
+ * `profiles` table (role = "DISPATCHER") at runtime. Hardcoded UUIDs were
+ * removed because they referenced non-existent database users, which broke
+ * dispatcher assignment and RLS visibility.
+ *
+ * See: TASK-DISP-01 in laundry-link-v1-backlog.md
+ */
+export const DISPATCHERS: { id: string; name: string }[] = [];

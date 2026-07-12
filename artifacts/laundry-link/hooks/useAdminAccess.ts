@@ -2,21 +2,38 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { ENV, IS_DEVELOPMENT } from "@/constants/env";
 
-const SUPER_PASSPHRASE = "MAFIA CODE BRUV";
 const SUPER_SESSION_KEY = "admin_super_session";
 
-// Emails that are always Super Admin regardless of session code
-const HARDCODED_SUPER_EMAILS: string[] = [];
+/**
+ * Super Admin passphrase source priority:
+ *   1. EXPO_PUBLIC_ADMIN_PASSPHRASE environment variable (production)
+ *   2. Disabled — returns empty string if env var is not set
+ *
+ * In production, passphrase-based elevation should be REPLACED by setting
+ * `user_metadata.admin_tier = "SUPER"` directly in the Supabase dashboard.
+ *
+ * See: TASK-SEC-01 in laundry-link-v1-backlog.md
+ */
+function resolvePassphrase(): string {
+  if (ENV.ADMIN_PASSPHRASE) return ENV.ADMIN_PASSPHRASE;
+  if (IS_DEVELOPMENT) {
+    console.warn(
+      "[PurePress] EXPO_PUBLIC_ADMIN_PASSPHRASE is not set. " +
+        "Passphrase-based Super Admin unlock is disabled. " +
+        "Set user_metadata.admin_tier = \"SUPER\" in Supabase dashboard instead.",
+    );
+  }
+  return "";
+}
 
 export type AdminTier = "SUPER" | "STAFF";
 
 export interface AdminAccess {
   isSuperAdmin: boolean;
   adminTier: AdminTier;
-  /** Attempt to unlock Super Admin via passphrase. Returns true on success. */
   unlockSuper: (passphrase: string) => Promise<boolean>;
-  /** Revoke the current Super Admin session. */
   revokeSuper: () => Promise<void>;
 }
 
@@ -24,19 +41,21 @@ export function useAdminAccess(): AdminAccess {
   const { user } = useAuth();
   const [sessionSuper, setSessionSuper] = useState(false);
 
-  // Restore persisted super-session on mount
   useEffect(() => {
     AsyncStorage.getItem(SUPER_SESSION_KEY)
-      .then((val) => { if (val === "1") setSessionSuper(true); })
+      .then((val) => {
+        if (val === "1") setSessionSuper(true);
+      })
       .catch(() => {});
   }, []);
 
   const isMetaSuper = user?.user_metadata?.admin_tier === "SUPER";
-  const isEmailSuper = HARDCODED_SUPER_EMAILS.includes(user?.email ?? "");
-  const isSuperAdmin = isMetaSuper || isEmailSuper || sessionSuper;
+  const isSuperAdmin = isMetaSuper || sessionSuper;
 
   const unlockSuper = useCallback(async (passphrase: string): Promise<boolean> => {
-    if (passphrase.trim().toUpperCase() === SUPER_PASSPHRASE) {
+    const expected = resolvePassphrase();
+    if (!expected) return false;
+    if (passphrase.trim().toUpperCase() === expected.trim().toUpperCase()) {
       await AsyncStorage.setItem(SUPER_SESSION_KEY, "1");
       setSessionSuper(true);
       return true;

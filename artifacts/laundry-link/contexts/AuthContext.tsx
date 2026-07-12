@@ -14,6 +14,7 @@ import {
   supabase,
   testSupabaseConnection,
 } from "@/lib/supabase";
+import { ENV } from "@/constants/env";
 import { UserRole } from "@/types";
 
 export type ConnectionStatus =
@@ -27,7 +28,6 @@ interface AuthContextType {
   session: Session | null;
   role: UserRole | null;
   isLoading: boolean;
-  /** true ONLY when Supabase keys are not configured at all */
   isDemo: boolean;
   connectionStatus: ConnectionStatus;
   signUp: (
@@ -85,6 +85,17 @@ function useProtectedRoute(
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * DEMO MODE — active only when Supabase env vars are absent.
+ *
+ * Demo mode allows the app to run for local development without a Supabase
+ * project. It is NOT a production fallback. If Supabase keys are set but
+ * Supabase is unreachable, the real auth error is surfaced to the user.
+ *
+ * To disable demo mode: set EXPO_PUBLIC_SUPABASE_URL and
+ * EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file.
+ */
 function makeDemoUser(fullName: string, email: string, role: UserRole): User {
   return {
     id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`,
@@ -96,13 +107,13 @@ function makeDemoUser(fullName: string, email: string, role: UserRole): User {
   } as User;
 }
 
-// Wraps a Supabase call and logs + re-surfaces the actual error message.
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await fn();
   } catch (e: any) {
-    const msg = e?.message ?? String(e);
-    console.log("[LaundryLink] Supabase call failed:", msg);
+    if (ENV.IS_DEV) {
+      console.warn("[PurePress] Supabase call failed:", e?.message ?? String(e));
+    }
     return fallback;
   }
 }
@@ -117,15 +128,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isSupabaseConfigured ? "checking" : "unconfigured",
   );
 
-  // isDemo is TRUE only when keys are absent — NOT when the probe timed out.
-  // This ensures signIn/signUp always attempt real Supabase auth when configured.
   const isDemo = !isSupabaseConfigured;
 
   useEffect(() => {
     let authSub: { unsubscribe: () => void } | null = null;
 
     const init = async () => {
-      // ── No keys configured → pure demo mode ───────────────────────────
+      // ── Demo mode — no Supabase keys configured ────────────────────────
       if (!isSupabaseConfigured) {
         setConnectionStatus("unconfigured");
         const [savedUser, savedRole] = await Promise.all([
@@ -142,10 +151,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // ── Keys present → restore session immediately (no probe wait) ─────
-      // Session is stored in AsyncStorage by the Supabase client itself.
-      // We do NOT wait for the probe before restoring — this is what allows
-      // instant login on app re-open even with a slow mobile connection.
+      // ── Supabase configured — restore session immediately ──────────────
+      // Session lives in AsyncStorage (set by the Supabase client).
+      // We restore without waiting for the probe so re-opens are instant.
       const sessionResult = await safe(
         () => supabase.auth.getSession(),
         { data: { session: null }, error: null },
@@ -157,9 +165,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole((s.user.user_metadata?.role as UserRole) || "CUSTOMER");
       }
 
-      // Register auth state listener — fires on sign-in, sign-out, token refresh
       const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
-        console.log("[LaundryLink] Auth state changed:", _event);
+        if (ENV.IS_DEV) {
+          console.log("[PurePress] Auth state changed:", _event);
+        }
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setRole(
@@ -172,11 +181,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setIsLoading(false);
 
-      // ── Run connection probe in the background (informational only) ────
-      // This sets connectionStatus for the UI banner but does NOT block auth.
+      // Connection probe runs in the background — informational only.
       testSupabaseConnection().then((reachable) => {
         setConnectionStatus(reachable ? "connected" : "unreachable");
-        console.log(`[LaundryLink] Connection status → ${reachable ? "connected" : "unreachable"}`);
       });
     };
 
@@ -193,7 +200,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fullName: string,
     selectedRole: UserRole,
   ) => {
-    // Pure demo mode — keys not configured
     if (isDemo) {
       const demoUser = makeDemoUser(fullName, email, selectedRole);
       setUser(demoUser);
@@ -203,7 +209,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: null };
     }
 
-    // Always try real Supabase when configured
     const result = await safe(
       () =>
         supabase.auth.signUp({
@@ -218,7 +223,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     if (result.error) return { error: result.error.message };
 
-    // Persist role in user metadata
     await safe(
       () => supabase.auth.updateUser({ data: { full_name: fullName, role: selectedRole } }),
       { data: { user: null as any }, error: null },
@@ -226,15 +230,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const finalUser = result.data.user;
     if (finalUser) setUser(finalUser);
     setRole(selectedRole);
-    await AsyncStorage.setItem("user_role", selectedRole);
     return { error: null };
   }, [isDemo]);
 
   // ── Sign in ────────────────────────────────────────────────────────────
-  // CRITICAL: Always tries real Supabase auth when configured.
-  // Never silently falls to demo if keys are present — shows the real error instead.
+  // Always tries real Supabase auth when configured.
+  // Never silently falls to demo if keys are present.
   const signIn = useCallback(async (email: string, password: string) => {
-    // Pure demo mode — keys not configured
     if (isDemo) {
       const savedUser = await AsyncStorage.getItem("demo_user").catch(() => null);
       if (savedUser) {
@@ -253,27 +255,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: null };
     }
 
-    // Real Supabase auth — always attempted when keys are configured
-    console.log("[LaundryLink] signIn → calling supabase.auth.signInWithPassword");
     let result: { data: { user: User | null; session: Session | null }; error: { message: string } | null };
     try {
       result = await supabase.auth.signInWithPassword({ email, password });
     } catch (e: any) {
       const msg = e?.message ?? "Network request failed — check your internet connection.";
-      console.log("[LaundryLink] signIn exception:", msg);
+      if (ENV.IS_DEV) console.warn("[PurePress] signIn exception:", msg);
       return { error: msg };
     }
 
     if (result.error) {
-      console.log("[LaundryLink] signIn Supabase error:", result.error.message);
+      if (ENV.IS_DEV) console.warn("[PurePress] signIn error:", result.error.message);
       return { error: result.error.message };
     }
 
     if (result.data.user) {
       const r = (result.data.user.user_metadata?.role as UserRole) || "CUSTOMER";
       setRole(r);
-      await AsyncStorage.setItem("user_role", r);
-      console.log("[LaundryLink] signIn success, role:", r);
     }
     return { error: null };
   }, [isDemo]);
@@ -283,7 +281,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) {
       await safe(() => supabase.auth.signOut(), undefined);
     }
-    await AsyncStorage.multiRemove(["demo_role", "demo_user", "user_role"]).catch(() => {});
+    await AsyncStorage.multiRemove(["demo_role", "demo_user"]).catch(() => {});
     setUser(null);
     setRole(null);
     setSession(null);
